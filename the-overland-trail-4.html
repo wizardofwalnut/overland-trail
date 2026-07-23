@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>The Overland Trail</title>
+<meta name="description" content="A retro-style wagon trail survival game. Manage supplies, cross rivers, hunt for food, and lead your party west.">
+<meta name="theme-color" content="#2b1d0e">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  html, body {
+    color-scheme: light only;
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #1b1b14;
+    font-family: 'Press Start 2P', monospace;
+    image-rendering: pixelated;
+  }
+  #bezel {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #1b1b14;
+  }
+  #game {
+    position: relative;
+    width: 100%; height: 100%;
+    max-width: 480px; max-height: 900px;
+    background: #e9dcb5;
+    border: 6px solid #2b1d0e;
+    overflow: hidden;
+  }
+  .screen {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    padding: 10px;
+    overflow-y: auto;
+  }
+  .screen.active { display: flex; }
+  h1, h2, h3 { margin: 6px 0; text-shadow: 2px 2px 0 #b8a878; color: #2b1d0e; }
+  h1 { font-size: 15px; text-align:center; }
+  h2 { font-size: 11px; }
+  h3 { font-size: 9px; }
+  p, label, span, div.txt { font-size: 8px; line-height: 1.6; color: #2b1d0e; }
+  .panel {
+    background: #f5ecd0; border: 3px solid #2b1d0e; border-radius: 2px;
+    padding: 8px; margin-bottom: 8px; box-shadow: inset 0 0 0 2px #cbb98a;
+  }
+  button {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    background: #8b5a2b;
+    color: #f5ecd0;
+    border: 3px solid #2b1d0e;
+    border-radius: 2px;
+    padding: 10px 6px;
+    margin: 4px 0;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #2b1d0e;
+    width: 100%;
+    text-align: left;
+  }
+  button:active { transform: translateY(2px); box-shadow: 0 1px 0 #2b1d0e; }
+  button.small { width: auto; display: inline-block; text-align: center; }
+  button.green { background: #3d6b2e; }
+  button.red { background: #7a2b1e; }
+  button.blue { background: #2b4a6b; }
+  input[type=text] {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px; padding: 6px; width: 100%;
+    border: 2px solid #2b1d0e; background: #fff8e6; margin-bottom: 6px;
+  }
+  .row { display: flex; gap: 6px; }
+  .row > * { flex: 1; }
+  .hud {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    background: #2b1d0e; color: #e9dcb5; padding: 6px; border-radius: 2px;
+    font-size: 7px; margin-bottom: 6px;
+  }
+  .hud div { padding: 2px 0; }
+  .scene {
+    position: relative; height: 140px; background: linear-gradient(to bottom, #7ec8e3 0%, #7ec8e3 55%, #4a7c3f 55%, #3d6b2e 100%);
+    border: 3px solid #2b1d0e; margin-bottom: 6px; overflow: hidden;
+  }
+  .sun { position: absolute; top: 8px; right: 14px; width: 18px; height: 18px; background: #f5d547; border-radius: 50%; box-shadow: 0 0 0 3px #d9b830; }
+  .cloud { position: absolute; top: 14px; width: 30px; height: 10px; background: #fff; opacity:.85; border-radius: 6px; }
+  .wagon {
+    position: absolute; bottom: 18px; left: 40%; width: 46px; height: 30px;
+  }
+  .wagon .body { position:absolute; bottom:8px; left:4px; width:38px; height:16px; background:#8b5a2b; border:2px solid #2b1d0e; }
+  .wagon .cover { position:absolute; bottom:20px; left:6px; width:34px; height:10px; background:#f0e6d2; border:2px solid #2b1d0e; border-radius:8px 8px 0 0; }
+  .wagon .wheel { position:absolute; bottom:2px; width:10px; height:10px; background:#2b1d0e; border-radius:50%; border:2px solid #1b1204; }
+  .wagon .wheel.w1 { left:6px; } .wagon .wheel.w2 { left:26px; }
+  .ground-strip { position:absolute; bottom:0; left:0; right:0; height:18px; background:#5c3a21; border-top:2px solid #2b1d0e; }
+  .list-item { display:flex; justify-content:space-between; font-size:8px; padding:3px 0; border-bottom:1px dashed #cbb98a; }
+  .member-health-good { color:#2f6b1f; }
+  .member-health-fair { color:#7a6a1e; }
+  .member-health-poor { color:#a84a1e; }
+  .member-health-verypoor { color:#8b1e1e; }
+  .member-health-dead { color:#555; text-decoration: line-through; }
+  #huntCanvas { width:100%; height:300px; display:block; background:#4a7c3f; border:3px solid #2b1d0e; touch-action:none; }
+  .huntControls { display:flex; gap:6px; margin-top:6px; align-items:center; }
+  .huntControls button { flex:1; }
+  #huntShoot { background:#7a2b1e; font-size:10px; }
+  .banner {
+    position:absolute; top:6px; left:6px; right:6px; background:#2b1d0e; color:#f5ecd0;
+    padding:6px; font-size:8px; text-align:center; border:2px solid #f5ecd0; z-index:5; display:none;
+  }
+  .footer-nav { margin-top:auto; display:flex; gap:6px; }
+  .scroll { flex:1; overflow-y:auto; }
+  .cardRow { display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap; }
+  .pokerCard {
+    width: 50px; height: 70px; background:#fff8e6; border:2px solid #2b1d0e; border-radius:4px;
+    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:bold;
+    position:relative; color:#2b1d0e;
+  }
+  .pokerCard.red { color:#a83232; }
+  .pokerCard.back {
+    background: repeating-linear-gradient(45deg, #6b4321 0 5px, #8b5a2b 5px 10px);
+  }
+  .pokerCard.held { border-color:#3d6b2e; box-shadow: 0 0 0 2px #3d6b2e; }
+  .holdTag { position:absolute; bottom:2px; font-size:6px; color:#3d6b2e; }
+</style>
+</head>
+<body>
+<div id="bezel"><div id="game">
+  <button id="audioToggle" onclick="toggleAudio()" style="position:absolute; top:6px; right:6px; width:34px; height:34px; padding:0; margin:0; font-size:14px; z-index:50; line-height:1;">&#9834;</button>
+
+
+  <!-- TITLE -->
+  <div class="screen active" id="screen-title">
+    <div style="margin-top:40%; text-align:center;">
+      <h1>THE<br>OVERLAND TRAIL</h1>
+      <p style="text-align:center; margin: 16px 0;">Independence, Missouri<br>to the<br>Willamette Valley</p>
+      <button class="blue" id="continueBtn" style="display:none; text-align:center; margin-top:12px;" onclick="continueSavedGame()">CONTINUE JOURNEY</button>
+      <button class="green" onclick="goSetup()" style="text-align:center; margin-top:12px;">START NEW JOURNEY</button>
+    </div>
+  </div>
+
+  <!-- SETUP -->
+  <div class="screen" id="screen-setup">
+    <h2>CHOOSE YOUR OCCUPATION</h2>
+    <div class="scroll">
+      <div class="panel">
+        <button onclick="chooseProfession('banker')">BANKER &mdash; $1600<br><span style="font-size:6px;">Easy start, low score bonus</span></button>
+        <button onclick="chooseProfession('carpenter')">CARPENTER &mdash; $1200<br><span style="font-size:6px;">Balanced start &amp; bonus</span></button>
+        <button onclick="chooseProfession('farmer')">FARMER &mdash; $800<br><span style="font-size:6px;">Hard start, high score bonus</span></button>
+      </div>
+      <div class="panel" id="namesPanel" style="display:none;">
+        <h3>NAME YOUR PARTY</h3>
+        <input type="text" id="name0" placeholder="Party Leader (You)" value="You">
+        <input type="text" id="name1" placeholder="Member 2" value="Sam">
+        <input type="text" id="name2" placeholder="Member 3" value="Alex">
+        <input type="text" id="name3" placeholder="Member 4" value="Jo">
+        <button class="green" onclick="finishSetup()">HEAD TO THE STORE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STORE -->
+  <div class="screen" id="screen-store">
+    <h2>MATT'S GENERAL STORE</h2>
+    <div class="panel"><span id="storeMoney"></span></div>
+    <div class="scroll">
+      <div class="panel">
+        <div class="list-item"><span>Oxen (per yoke, $40)</span><span id="oxenCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('oxen',-1)">&minus;</button><button class="small" onclick="buy('oxen',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Food, lbs ($0.20/lb)</span><span id="foodCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('food',-50)">&minus;50</button><button class="small" onclick="buy('food',50)">+50</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Ammo, boxes of 20 ($2)</span><span id="bulletsCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('bullets',-1)">&minus;</button><button class="small" onclick="buy('bullets',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Clothing sets ($10)</span><span id="clothingCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('clothing',-1)">&minus;</button><button class="small" onclick="buy('clothing',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Spare wagon parts ($10 each)</span><span id="partsCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('parts',-1)">&minus;</button><button class="small" onclick="buy('parts',1)">+</button></div>
+      </div>
+    </div>
+    <button class="green" onclick="departFromStore()">DEPART FOR OREGON</button>
+  </div>
+
+  <!-- TRAVEL -->
+  <div class="screen" id="screen-travel">
+    <div class="banner" id="banner"></div>
+    <div class="hud" id="hud"></div>
+    <div class="scene" id="scene">
+      <div class="sun"></div>
+      <div class="cloud" style="left:15%;"></div>
+      <div class="cloud" style="left:60%; top:24px; width:22px;"></div>
+      <div class="wagon">
+        <div class="cover"></div>
+        <div class="body"></div>
+        <div class="wheel w1"></div>
+        <div class="wheel w2"></div>
+      </div>
+      <div class="ground-strip"></div>
+    </div>
+    <div class="scroll" id="log"></div>
+    <div class="panel" style="margin-top:6px;">
+      <div class="row">
+        <button class="green" onclick="continueTrail()">CONTINUE TRAIL</button>
+        <button class="blue" onclick="openHunt()">HUNT</button>
+      </div>
+      <div class="row">
+        <button onclick="restParty()">REST A DAY</button>
+      </div>
+      <div class="row">
+        <button onclick="openPaceMenu()">PACE: <span id="paceLbl"></span></button>
+        <button onclick="openRationsMenu()">RATIONS: <span id="rationLbl"></span></button>
+      </div>
+      <button onclick="openSupplies()">CHECK SUPPLIES &amp; PARTY</button>
+    </div>
+  </div>
+
+  <!-- TOWN -->
+  <div class="screen" id="screen-town">
+    <h2 id="townName">TOWN</h2>
+    <div class="scroll">
+      <div class="panel"><span id="townStoreMoney"></span></div>
+      <div class="panel">
+        <div class="list-item"><span>Oxen (per yoke, $40)</span><span id="townOxenCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('oxen',-1)">&minus;</button><button class="small" onclick="buy('oxen',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Food, lbs ($0.20/lb)</span><span id="townFoodCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('food',-50)">&minus;50</button><button class="small" onclick="buy('food',50)">+50</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Ammo, boxes of 20 ($2)</span><span id="townBulletsCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('bullets',-1)">&minus;</button><button class="small" onclick="buy('bullets',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Clothing sets ($10)</span><span id="townClothingCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('clothing',-1)">&minus;</button><button class="small" onclick="buy('clothing',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Spare wagon parts ($10 each)</span><span id="townPartsCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('parts',-1)">&minus;</button><button class="small" onclick="buy('parts',1)">+</button></div>
+      </div>
+    </div>
+    <button class="blue" id="townPokerBtn" onclick="openPoker()" style="display:none;">PLAY POKER AT THE SALOON</button>
+    <button class="green" onclick="leaveTown()">CONTINUE ON TRAIL</button>
+  </div>
+
+  <!-- POKER -->
+  <div class="screen" id="screen-poker">
+    <h2>SALOON POKER</h2>
+    <div class="scroll" id="pokerTable"></div>
+  </div>
+
+  <!-- EVENT / MODAL -->
+  <div class="screen" id="screen-event">
+    <h2 id="eventTitle">EVENT</h2>
+    <div class="scroll panel" id="eventBody"></div>
+    <div id="eventChoices"></div>
+  </div>
+
+  <!-- HUNT -->
+  <div class="screen" id="screen-hunt">
+    <h2>HUNTING</h2>
+    <div class="hud" id="huntHud"></div>
+    <canvas id="huntCanvas" width="440" height="340"></canvas>
+    <div class="huntControls">
+      <button class="small" id="aimLeft">&#9664; ROTATE</button>
+      <button class="small" id="huntShoot">SHOOT</button>
+      <button class="small" id="aimRight">ROTATE &#9654;</button>
+    </div>
+    <button class="red" onclick="endHunt()" style="margin-top:6px;">LEAVE HUNTING GROUNDS</button>
+  </div>
+
+  <!-- END -->
+  <div class="screen" id="screen-end">
+    <div class="scroll panel" id="endBody" style="margin-top:30%;"></div>
+    <button class="green" onclick="restartGame()">PLAY AGAIN</button>
+  </div>
+
+</div></div>
+
+<script>
+/* ============ DATA ============ */
+const PROFESSIONS = {
+  banker:    { money: 1600, mult: 1 },
+  carpenter: { money: 1200, mult: 2 },
+  farmer:    { money: 800,  mult: 3 }
+};
+const PACE = {
+  steady:     { miles: 14, risk: 1 },
+  strenuous:  { miles: 20, risk: 1.6 },
+  grueling:   { miles: 26, risk: 2.4 }
+};
+const RATIONS = {
+  filling:   { lbs: 3, risk: 1 },
+  meager:    { lbs: 2, risk: 1.5 },
+  bareBones: { lbs: 1, risk: 2.3 }
+};
+const LANDMARKS = [
+  { name: "Fort Kearney", mile: 300, town: true, poker: true },
+  { name: "Chimney Rock", mile: 550, town: false },
+  { name: "Fort Laramie", mile: 640, town: true, poker: true },
+  { name: "Independence Rock", mile: 830, town: false },
+  { name: "South Pass", mile: 940, town: false },
+  { name: "Fort Bridger", mile: 1030, town: true, poker: false },
+  { name: "Fort Hall", mile: 1280, town: true, poker: true },
+  { name: "Fort Boise", mile: 1550, town: true, poker: false },
+  { name: "The Dalles", mile: 1830, town: true, poker: true },
+  { name: "Willamette Valley", mile: 2000, town: false }
+];
+const RIVER_MILES = [420, 780, 1150, 1620];
+const MONTHS = ["", "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/* ============ STATE ============ */
+let S = null;
+
+/* ============ AUDIO ENGINE (fully synthesized — no external files) ============ */
+let actx = null, musicGain = null, sfxGain = null;
+let audioEnabled = (localStorage.getItem('overlandTrailAudioPref') !== '0');
+let musicTimer = null;
+let currentTheme = null;
+
+const NOTES = {
+  C3:130.81, D3:146.83, E3:164.81, F3:174.61, G3:196.00, A3:220.00, B3:246.94,
+  C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392.00, A4:440.00, B4:493.88,
+  C5:523.25, D5:587.33, E5:659.25, F5:698.46, G5:783.99, A5:880.00
+};
+
+function initAudio() {
+  if (actx) return;
+  try {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    musicGain = actx.createGain(); musicGain.gain.value = 0.20; musicGain.connect(actx.destination);
+    sfxGain = actx.createGain(); sfxGain.gain.value = 0.45; sfxGain.connect(actx.destination);
+  } catch (e) { /* Web Audio unavailable */ }
+}
+function ensureAudio() {
+  if (!actx) initAudio();
+  if (actx && actx.state === 'suspended') actx.resume();
+}
+document.addEventListener('click', function firstInteract() {
+  ensureAudio();
+  if (currentTheme) { const t = currentTheme; currentTheme = null; ensureTheme(t); }
+  document.removeEventListener('click', firstInteract);
+}, { once: true });
+
+function playTone(freq, startTime, duration, type, gain, node) {
+  if (!actx || !audioEnabled) return;
+  const osc = actx.createOscillator();
+  osc.type = type || 'square';
+  osc.frequency.value = freq;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(Math.max(gain, 0.0001), startTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  osc.connect(g); g.connect(node || sfxGain);
+  osc.start(startTime);
+  osc.stop(startTime + duration + 0.03);
+}
+function playNoise(startTime, duration, gain, filterFreq, filterType, node) {
+  if (!actx || !audioEnabled) return;
+  const bufferSize = Math.max(1, Math.floor(actx.sampleRate * duration));
+  const buffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const noise = actx.createBufferSource();
+  noise.buffer = buffer;
+  const filter = actx.createBiquadFilter();
+  filter.type = filterType || 'lowpass';
+  filter.frequency.value = filterFreq || 1200;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(Math.max(gain, 0.0001), startTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  noise.connect(filter); filter.connect(g); g.connect(node || sfxGain);
+  noise.start(startTime);
+}
+
+/* ---- sound effects ---- */
+function sfxClick() { if (!actx) return; const t = actx.currentTime; playTone(700, t, 0.05, 'square', 0.10, sfxGain); }
+function sfxBuy() { if (!actx) return; const t = actx.currentTime; playTone(880, t, 0.07, 'square', 0.12, sfxGain); playTone(1320, t + 0.06, 0.09, 'square', 0.10, sfxGain); }
+function sfxSell() { if (!actx) return; const t = actx.currentTime; playTone(660, t, 0.07, 'square', 0.10, sfxGain); playTone(440, t + 0.06, 0.09, 'square', 0.09, sfxGain); }
+function sfxStep() { if (!actx) return; const t = actx.currentTime; playNoise(t, 0.08, 0.08, 500, 'lowpass', sfxGain); }
+function sfxRest() { if (!actx) return; const t = actx.currentTime; playTone(NOTES.C4, t, 0.3, 'triangle', 0.10, sfxGain); playTone(NOTES.E4, t + 0.1, 0.3, 'triangle', 0.09, sfxGain); }
+function sfxAlert() { if (!actx) return; const t = actx.currentTime; playTone(NOTES.A4, t, 0.12, 'square', 0.11, sfxGain); playTone(NOTES.A4, t + 0.16, 0.12, 'square', 0.11, sfxGain); }
+function sfxLandmark() { if (!actx) return; const t = actx.currentTime; playTone(NOTES.C4, t, 0.14, 'square', 0.10, sfxGain); playTone(NOTES.E4, t + 0.13, 0.14, 'square', 0.10, sfxGain); playTone(NOTES.G4, t + 0.26, 0.22, 'square', 0.11, sfxGain); }
+function sfxSplash() { if (!actx) return; const t = actx.currentTime; playNoise(t, 0.5, 0.18, 900, 'lowpass', sfxGain); playNoise(t + 0.05, 0.3, 0.1, 1800, 'highpass', sfxGain); }
+function sfxShoot() { if (!actx) return; const t = actx.currentTime; playNoise(t, 0.12, 0.22, 2200, 'highpass', sfxGain); playTone(140, t, 0.08, 'square', 0.12, sfxGain); }
+function sfxHit() { if (!actx) return; const t = actx.currentTime; playTone(NOTES.E5, t, 0.08, 'square', 0.13, sfxGain); playTone(NOTES.A5, t + 0.07, 0.12, 'square', 0.12, sfxGain); }
+function sfxWin() {
+  if (!actx) return; const t = actx.currentTime;
+  [['C4',0],['E4',0.18],['G4',0.36],['C5',0.54],['G4',0.72],['C5',0.9]].forEach(([n,o]) => playTone(NOTES[n], t + o, 0.24, 'square', 0.14, sfxGain));
+}
+function sfxLose() {
+  if (!actx) return; const t = actx.currentTime;
+  [['A3',0],['G3',0.3],['F3',0.6],['D3',0.9]].forEach(([n,o]) => playTone(NOTES[n], t + o, 0.5, 'triangle', 0.12, sfxGain));
+}
+
+/* ---- music themes: each schedule fn returns loop length in seconds ---- */
+function scheduleTitleTheme(startTime) {
+  const lead = ['G3','B3','D4','G3','C4','E4','D4','B3'];
+  const step = 0.6;
+  lead.forEach((n, i) => playTone(NOTES[n], startTime + i * step, step * 0.85, 'triangle', 0.09, musicGain));
+  return lead.length * step;
+}
+function scheduleTrailTheme(startTime) {
+  const lead = ['G4','A4','B4','C5','B4','A4','G4','E4','D4','E4','G4','A4','G4','E4','D4','G3'];
+  const bass = ['C3','C3','G3','G3','C3','C3','G3','G3','F3','F3','C3','C3','F3','F3','G3','G3'];
+  const step = 0.42;
+  lead.forEach((n, i) => playTone(NOTES[n], startTime + i * step, step * 0.9, 'square', 0.065, musicGain));
+  bass.forEach((n, i) => playTone(NOTES[n], startTime + i * step, step * 0.9, 'triangle', 0.08, musicGain));
+  return lead.length * step;
+}
+function scheduleHuntTheme(startTime) {
+  const lead = ['C4','E4','G4','C5','G4','E4','C4','D4','F4','A4','D5','A4','F4','D4','C4','B3'];
+  const bass = ['C3','C3','C3','C3','F3','F3','F3','F3','G3','G3','G3','G3','C3','C3','C3','C3'];
+  const step = 0.24;
+  lead.forEach((n, i) => playTone(NOTES[n], startTime + i * step, step * 0.85, 'square', 0.065, musicGain));
+  bass.forEach((n, i) => playTone(NOTES[n], startTime + i * step, step * 0.85, 'triangle', 0.08, musicGain));
+  return lead.length * step;
+}
+const THEMES = { title: scheduleTitleTheme, trail: scheduleTrailTheme, hunt: scheduleHuntTheme };
+
+function playMusicLoop(scheduleFn) {
+  if (musicTimer) clearTimeout(musicTimer);
+  function loop() {
+    if (!audioEnabled || !actx) return;
+    const startTime = actx.currentTime + 0.05;
+    const loopLen = scheduleFn(startTime);
+    musicTimer = setTimeout(loop, Math.max(200, loopLen * 1000 - 60));
+  }
+  loop();
+}
+function stopMusic() {
+  if (musicTimer) clearTimeout(musicTimer);
+  musicTimer = null;
+}
+function ensureTheme(themeName) {
+  currentTheme = themeName;
+  if (!audioEnabled || !actx) return;
+  stopMusic();
+  const fn = THEMES[themeName];
+  if (fn) playMusicLoop(fn);
+}
+function toggleAudio() {
+  audioEnabled = !audioEnabled;
+  localStorage.setItem('overlandTrailAudioPref', audioEnabled ? '1' : '0');
+  const btn = document.getElementById('audioToggle');
+  if (btn) btn.textContent = audioEnabled ? '\u266A' : '\u2715';
+  if (audioEnabled) { ensureAudio(); if (currentTheme) ensureTheme(currentTheme); }
+  else { stopMusic(); }
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('button');
+  if (b && b.id !== 'aimLeft' && b.id !== 'aimRight' && b.id !== 'audioToggle') sfxClick();
+});
+
+function freshState() {
+  return {
+    profession: null,
+    money: 0,
+    members: [],
+    oxen: 0, food: 0, bullets: 0, clothing: 0, parts: 0,
+    pace: 'steady', rations: 'filling',
+    mileage: 0,
+    date: { month: 3, day: 1, year: 1848 },
+    weather: 'Mild',
+    landmarksPassed: [],
+    riversPassed: [],
+    logEntries: [],
+    over: false, won: false
+  };
+}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function log(msg) {
+  S.logEntries.unshift(msg);
+  if (S.logEntries.length > 12) S.logEntries.pop();
+  renderLog();
+}
+function renderLog() {
+  document.getElementById('log').innerHTML =
+    S.logEntries.map(m => `<div class="txt">&raquo; ${m}</div>`).join('');
+}
+
+function flashBanner(text) {
+  const b = document.getElementById('banner');
+  b.textContent = text;
+  b.style.display = 'block';
+  clearTimeout(b._t);
+  b._t = setTimeout(() => b.style.display = 'none', 2200);
+}
+
+/* ============ SETUP FLOW ============ */
+function goSetup() { clearSave(); S = freshState(); ensureTheme('trail'); show('screen-setup'); }
+
+const SAVE_KEY = 'overlandTrailSave_v1';
+function saveGame() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch(e) { /* storage unavailable */ }
+}
+function loadGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+function clearSave() {
+  try { localStorage.removeItem(SAVE_KEY); } catch(e) { /* storage unavailable */ }
+}
+function continueSavedGame() {
+  const saved = loadGame();
+  if (!saved) { flashBanner("No saved journey found."); return; }
+  S = saved;
+  show('screen-travel');
+  renderTravel();
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = loadGame();
+  const btn = document.getElementById('continueBtn');
+  if (saved && !saved.over && btn) btn.style.display = 'block';
+  currentTheme = 'title';
+  const audioBtn = document.getElementById('audioToggle');
+  if (audioBtn) audioBtn.textContent = audioEnabled ? '\u266A' : '\u2715';
+});
+
+function chooseProfession(p) {
+  S.profession = p;
+  S.money = PROFESSIONS[p].money;
+  document.getElementById('namesPanel').style.display = 'block';
+}
+
+function finishSetup() {
+  const names = [0,1,2,3].map(i => document.getElementById('name'+i).value.trim() || ('Traveler '+(i+1)));
+  S.members = names.map(n => ({ name: n, health: 100 }));
+  show('screen-store');
+  renderStore();
+}
+
+/* ============ STORE ============ */
+function renderStore() { refreshStoreUI(); }
+function refreshStoreUI() {
+  const sets = [
+    { money: 'storeMoney', oxen: 'oxenCount', food: 'foodCount', bullets: 'bulletsCount', clothing: 'clothingCount', parts: 'partsCount' },
+    { money: 'townStoreMoney', oxen: 'townOxenCount', food: 'townFoodCount', bullets: 'townBulletsCount', clothing: 'townClothingCount', parts: 'townPartsCount' }
+  ];
+  sets.forEach(ids => {
+    const moneyEl = document.getElementById(ids.money);
+    if (!moneyEl) return;
+    moneyEl.textContent = 'Cash on hand: $' + S.money.toFixed(2);
+    document.getElementById(ids.oxen).textContent = S.oxen + ' yoke';
+    document.getElementById(ids.food).textContent = S.food + ' lbs';
+    document.getElementById(ids.bullets).textContent = S.bullets + ' rounds';
+    document.getElementById(ids.clothing).textContent = S.clothing + ' sets';
+    document.getElementById(ids.parts).textContent = S.parts + ' parts';
+  });
+}
+function buy(item, delta) {
+  const unitPrice = { oxen: 40, food: 0.20, bullets: 2/20, clothing: 10, parts: 10 }[item];
+  let change = delta;
+  if (item === 'bullets') change = delta * 20; // buttons move ammo in boxes of 20 rounds
+  if (change < 0) {
+    const current = S[item];
+    change = -Math.min(Math.abs(change), current); // never sell/refund more than you actually own
+    if (change === 0) return;
+  } else if (change > 0) {
+    const cost = unitPrice * change;
+    if (S.money < cost) { flashBanner("Not enough cash!"); return; }
+  }
+  const cost = unitPrice * change;
+  S[item] = Math.max(0, S[item] + change);
+  S.money -= cost;
+  if (change > 0) sfxBuy(); else sfxSell();
+  S.money = Math.round(S.money*100)/100;
+  refreshStoreUI();
+}
+function departFromStore() {
+  if (S.oxen < 1) { flashBanner("You need at least 1 yoke of oxen!"); return; }
+  if (S.food < 50) { flashBanner("You should buy more food!"); return; }
+  log("Departed Independence, Missouri.");
+  show('screen-travel');
+  renderTravel();
+}
+
+/* ============ POKER (optional saloon mini-game) ============ */
+let poker = null;
+
+function freshDeck() {
+  const suits = ['\u2660','\u2665','\u2666','\u2663'];
+  const deck = [];
+  for (const s of suits) for (let r = 2; r <= 14; r++) deck.push({ rank: r, suit: s });
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+function evaluateHand(cards) {
+  const ranks = cards.map(c => c.rank).sort((a, b) => b - a);
+  const suits = cards.map(c => c.suit);
+  const counts = {};
+  ranks.forEach(r => counts[r] = (counts[r] || 0) + 1);
+  const countGroups = Object.entries(counts).map(([r, c]) => ({ r: +r, c })).sort((a, b) => b.c - a.c || b.r - a.r);
+  const isFlush = suits.every(s => s === suits[0]);
+  const uniqueRanks = [...new Set(ranks)];
+  let isStraight = false, straightHigh = 0;
+  if (uniqueRanks.length === 5) {
+    if (uniqueRanks[0] - uniqueRanks[4] === 4) { isStraight = true; straightHigh = uniqueRanks[0]; }
+    else if (uniqueRanks.join(',') === '14,5,4,3,2') { isStraight = true; straightHigh = 5; }
+  }
+  const tiebreak = countGroups.map(g => g.r);
+  if (isStraight && isFlush) return { rank: 8, tiebreak: [straightHigh], name: 'Straight Flush' };
+  if (countGroups[0].c === 4) return { rank: 7, tiebreak, name: 'Four of a Kind' };
+  if (countGroups[0].c === 3 && countGroups[1] && countGroups[1].c === 2) return { rank: 6, tiebreak, name: 'Full House' };
+  if (isFlush) return { rank: 5, tiebreak: ranks, name: 'Flush' };
+  if (isStraight) return { rank: 4, tiebreak: [straightHigh], name: 'Straight' };
+  if (countGroups[0].c === 3) return { rank: 3, tiebreak, name: 'Three of a Kind' };
+  if (countGroups[0].c === 2 && countGroups[1] && countGroups[1].c === 2) return { rank: 2, tiebreak, name: 'Two Pair' };
+  if (countGroups[0].c === 2) return { rank: 1, tiebreak, name: 'Pair' };
+  return { rank: 0, tiebreak: ranks, name: 'High Card' };
+}
+function compareHands(a, b) {
+  if (a.rank !== b.rank) return a.rank - b.rank;
+  const len = Math.max(a.tiebreak.length, b.tiebreak.length);
+  for (let i = 0; i < len; i++) {
+    const av = a.tiebreak[i] || 0, bv = b.tiebreak[i] || 0;
+    if (av !== bv) return av - bv;
+  }
+  return 0;
+}
+function openPoker() {
+  poker = { bet: Math.min(10, Math.floor(S.money)) || 5, stage: 'bet' };
+  renderPoker();
+  show('screen-poker');
+}
+function setPokerBet(amount) {
+  poker.bet = Math.max(5, Math.min(Math.floor(S.money), amount));
+  sfxClick();
+  renderPoker();
+}
+function dealPoker() {
+  if (S.money < poker.bet) { flashBanner("Not enough cash for that bet!"); return; }
+  poker.deck = freshDeck();
+  poker.playerHand = poker.deck.splice(0, 5);
+  poker.dealerHand = poker.deck.splice(0, 5);
+  poker.held = [false, false, false, false, false];
+  poker.stage = 'drawn0';
+  S.money -= poker.bet;
+  sfxBuy();
+  renderPoker();
+}
+function toggleHold(i) {
+  if (!poker || poker.stage !== 'drawn0') return;
+  poker.held[i] = !poker.held[i];
+  sfxClick();
+  renderPoker();
+}
+function drawPoker() {
+  for (let i = 0; i < 5; i++) if (!poker.held[i]) poker.playerHand[i] = poker.deck.shift();
+  const counts = {};
+  poker.dealerHand.forEach(c => counts[c.rank] = (counts[c.rank] || 0) + 1);
+  for (let i = 0; i < 5; i++) {
+    if (counts[poker.dealerHand[i].rank] < 2) poker.dealerHand[i] = poker.deck.shift();
+  }
+  poker.playerEval = evaluateHand(poker.playerHand);
+  poker.dealerEval = evaluateHand(poker.dealerHand);
+  const cmp = compareHands(poker.playerEval, poker.dealerEval);
+  if (cmp > 0) { poker.result = 'win'; S.money += poker.bet * 2; sfxWin(); }
+  else if (cmp < 0) { poker.result = 'lose'; sfxLose(); }
+  else { poker.result = 'push'; S.money += poker.bet; }
+  poker.stage = 'result';
+  saveGame();
+  renderPoker();
+}
+function pokerPlayAgain() {
+  poker.stage = 'bet';
+  poker.bet = Math.min(poker.bet, Math.floor(S.money)) || 5;
+  renderPoker();
+}
+function leavePoker() {
+  poker = null;
+  refreshStoreUI();
+  show('screen-town');
+}
+function cardHTML(card, faceDown, held, idx, clickable) {
+  if (faceDown) return '<div class="pokerCard back"></div>';
+  const red = (card.suit === '\u2665' || card.suit === '\u2666');
+  const rankStr = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }[card.rank] || card.rank;
+  const cls = 'pokerCard' + (red ? ' red' : '') + (held ? ' held' : '');
+  const click = clickable ? ` onclick="toggleHold(${idx})"` : '';
+  return `<div class="${cls}"${click}>${rankStr}${card.suit}${held ? '<div class="holdTag">HOLD</div>' : ''}</div>`;
+}
+function renderPoker() {
+  const el = document.getElementById('pokerTable');
+  if (poker.stage === 'bet') {
+    const maxBet = Math.floor(S.money);
+    el.innerHTML = `
+      <h3>PLACE YOUR WAGER</h3>
+      <div class="panel">Cash on hand: $${S.money.toFixed(2)}</div>
+      <div class="row">
+        ${[5, 10, 25, 50].map(v => `<button class="small"${v > maxBet ? ' disabled' : ''} onclick="setPokerBet(${v})">$${v}</button>`).join('')}
+      </div>
+      <div class="panel">Current wager: $${poker.bet.toFixed(2)}</div>
+      <button class="green" onclick="dealPoker()">DEAL</button>
+      <button class="red" onclick="leavePoker()">LEAVE TABLE</button>
+    `;
+  } else if (poker.stage === 'drawn0') {
+    el.innerHTML = `
+      <h3>YOUR HAND (tap to hold, then draw)</h3>
+      <div class="cardRow">${poker.playerHand.map((c, i) => cardHTML(c, false, poker.held[i], i, true)).join('')}</div>
+      <h3>DEALER</h3>
+      <div class="cardRow">${poker.dealerHand.map(() => cardHTML(null, true)).join('')}</div>
+      <div class="panel">Wager: $${poker.bet.toFixed(2)}</div>
+      <button class="green" onclick="drawPoker()">DRAW</button>
+    `;
+  } else if (poker.stage === 'result') {
+    const resultText = poker.result === 'win' ? `YOU WIN $${poker.bet.toFixed(2)}!`
+      : poker.result === 'lose' ? `YOU LOSE $${poker.bet.toFixed(2)}.`
+      : `PUSH — WAGER RETURNED.`;
+    el.innerHTML = `
+      <h3>YOUR HAND — ${poker.playerEval.name}</h3>
+      <div class="cardRow">${poker.playerHand.map((c) => cardHTML(c, false, false, 0, false)).join('')}</div>
+      <h3>DEALER — ${poker.dealerEval.name}</h3>
+      <div class="cardRow">${poker.dealerHand.map((c) => cardHTML(c, false, false, 0, false)).join('')}</div>
+      <div class="panel" style="text-align:center;">${resultText}</div>
+      <button class="green" onclick="pokerPlayAgain()">PLAY AGAIN</button>
+      <button class="red" onclick="leavePoker()">LEAVE TABLE</button>
+    `;
+  }
+}
+
+/* ============ TRAVEL ============ */
+function aliveMembers() { return S.members.filter(m => m.health > 0); }
+function healthLabel(h) {
+  if (h <= 0) return { text: 'DEAD', cls: 'dead' };
+  if (h >= 75) return { text: 'GOOD', cls: 'good' };
+  if (h >= 50) return { text: 'FAIR', cls: 'fair' };
+  if (h >= 25) return { text: 'POOR', cls: 'poor' };
+  return { text: 'VERY POOR', cls: 'verypoor' };
+}
+function nextLandmark() {
+  return LANDMARKS.find(l => l.mile > S.mileage) || LANDMARKS[LANDMARKS.length-1];
+}
+function renderTravel() {
+  document.getElementById('paceLbl').textContent = S.pace.toUpperCase();
+  document.getElementById('rationLbl').textContent = S.rations.toUpperCase();
+  const nl = nextLandmark();
+  const milesLeft = Math.max(0, nl.mile - S.mileage);
+  document.getElementById('hud').innerHTML = `
+    <div>Date: ${MONTHS[S.date.month]} ${S.date.day}, ${S.date.year}</div>
+    <div>Weather: ${S.weather}</div>
+    <div>Miles traveled: ${S.mileage} / 2000</div>
+    <div>Next: ${nl.name} (${milesLeft} mi)</div>
+    <div>Food: ${S.food} lbs</div>
+    <div>Cash: $${S.money.toFixed(2)}</div>
+    <div>Ammo: ${S.bullets}</div>
+    <div>Oxen: ${S.oxen} yoke</div>
+  `;
+  renderLog();
+  saveGame();
+  ensureTheme('trail');
+}
+function openPaceMenu() {
+  showEvent("SET PACE", "Choose your traveling pace. Faster paces cover more ground but wear down your party's health.", [
+    { label: "STEADY (safer)", fn: () => { S.pace='steady'; closeEvent(); } },
+    { label: "STRENUOUS", fn: () => { S.pace='strenuous'; closeEvent(); } },
+    { label: "GRUELLING (risky)", fn: () => { S.pace='grueling'; closeEvent(); } }
+  ]);
+}
+function openRationsMenu() {
+  showEvent("SET RATIONS", "Choose how much food your party eats each day. Skimping saves food but risks illness.", [
+    { label: "FILLING", fn: () => { S.rations='filling'; closeEvent(); } },
+    { label: "MEAGER", fn: () => { S.rations='meager'; closeEvent(); } },
+    { label: "BARE BONES (risky)", fn: () => { S.rations='bareBones'; closeEvent(); } }
+  ]);
+}
+function openSupplies() {
+  const list = S.members.map(m => {
+    const h = healthLabel(m.health);
+    return `<div class="list-item"><span>${m.name}</span><span class="member-health-${h.cls}">${h.text}</span></div>`;
+  }).join('');
+  showEvent("SUPPLIES & PARTY", `
+    <div class="list-item"><span>Cash</span><span>$${S.money.toFixed(2)}</span></div>
+    <div class="list-item"><span>Food</span><span>${S.food} lbs</span></div>
+    <div class="list-item"><span>Ammo</span><span>${S.bullets} rounds</span></div>
+    <div class="list-item"><span>Oxen</span><span>${S.oxen} yoke</span></div>
+    <div class="list-item"><span>Clothing</span><span>${S.clothing} sets</span></div>
+    <div class="list-item"><span>Spare parts</span><span>${S.parts}</span></div>
+    <h3>PARTY</h3>${list}
+  `, [ { label: "CLOSE", fn: closeEvent } ]);
+}
+
+function showEvent(title, body, choices) {
+  document.getElementById('eventTitle').textContent = title;
+  document.getElementById('eventBody').innerHTML = body;
+  document.getElementById('eventChoices').innerHTML = '';
+  choices.forEach(c => {
+    const b = document.createElement('button');
+    b.textContent = c.label;
+    b.onclick = c.fn;
+    document.getElementById('eventChoices').appendChild(b);
+  });
+  show('screen-event');
+}
+function closeEvent() {
+  if (S.over) { renderEnd(); show('screen-end'); return; }
+  show('screen-travel');
+  renderTravel();
+}
+
+function advanceDate(days) {
+  for (let i=0;i<days;i++) {
+    S.date.day++;
+    const dim = [31,28,31,30,31,30,31,31,30,31,30,31][S.date.month-1];
+    if (S.date.day > dim) { S.date.day = 1; S.date.month++; }
+    if (S.date.month > 12) { S.date.month = 1; S.date.year++; }
+  }
+}
+function rollWeather() {
+  const m = S.date.month;
+  const opts = (m<=4 || m>=10) ? ['Cold','Rainy','Mild','Freezing'] : ['Hot','Mild','Sunny','Stormy'];
+  S.weather = opts[Math.floor(Math.random()*opts.length)];
+}
+
+function continueTrail() {
+  if (S.over) return;
+  sfxStep();
+  const paceInfo = PACE[S.pace];
+  const rationInfo = RATIONS[S.rations];
+  rollWeather();
+  advanceDate(1);
+
+  // food consumption
+  const eaters = aliveMembers().length;
+  const eaten = eaters * rationInfo.lbs;
+  S.food = Math.max(0, S.food - eaten);
+  const starving = eaten > 0 && S.food === 0;
+
+  // mileage
+  let miles = paceInfo.miles;
+  if (S.weather === 'Stormy' || S.weather === 'Freezing') miles = Math.round(miles * 0.6);
+  if (S.oxen < 1) miles = 0;
+  S.mileage = Math.min(2000, S.mileage + miles);
+
+  // health drift: steady pace + filling rations should roughly break even;
+  // reckless choices (grueling pace, bare-bones rations) should compound sharply
+  let riskMult = paceInfo.risk * rationInfo.risk;
+  let bias = (1 - riskMult) * 1.5; // 0 at baseline (steady+filling), negative as choices worsen
+  S.members.forEach(m => {
+    if (m.health <= 0) return;
+    let drift = bias + (Math.random() * 2 - 1);
+    if (starving) drift -= 6 + Math.random() * 4;
+    m.health = Math.max(0, Math.min(100, m.health + drift));
+  });
+
+  log(`Traveled ${miles} miles. Weather: ${S.weather}.`);
+  if (starving) log("You're out of food! The party is starving.");
+
+  // Resolve in a strict order so exactly one thing happens per day:
+  // a due river crossing always takes priority, then a chance trail event,
+  // otherwise a normal day (landmark check + end-of-game check).
+  if (checkRiver()) return;
+  if (Math.random() < 0.13) { triggerRandomEvent(); return; }
+
+  if (checkLandmark()) return;
+  if (checkGameEnd()) return;
+  renderTravel();
+}
+
+function restParty() {
+  if (S.over) return;
+  sfxRest();
+  rollWeather();
+  advanceDate(1);
+  const eaters = aliveMembers().length;
+  const eaten = Math.ceil(eaters * RATIONS[S.rations].lbs * 0.6); // resting still costs some food
+  S.food = Math.max(0, S.food - eaten);
+  S.members.forEach(m => {
+    if (m.health <= 0) return;
+    m.health = Math.min(100, m.health + 8 + Math.random() * 8);
+  });
+  log("The party rested for a day to recover.");
+  if (checkLandmark()) return;
+  if (checkGameEnd()) return;
+  renderTravel();
+}
+
+function checkLandmark() {
+  const passed = LANDMARKS.find(l => l.mile <= S.mileage && !S.landmarksPassed.includes(l.name));
+  if (!passed) return false;
+  S.landmarksPassed.push(passed.name);
+  sfxLandmark();
+  flashBanner("Arrived at " + passed.name + "!");
+  log("Reached landmark: " + passed.name + ".");
+  if (passed.town) { showTown(passed); return true; }
+  return false;
+}
+function showTown(landmark) {
+  document.getElementById('townName').textContent = landmark.name.toUpperCase();
+  document.getElementById('townPokerBtn').style.display = landmark.poker ? 'block' : 'none';
+  refreshStoreUI();
+  saveGame();
+  flashBanner("Progress saved at " + landmark.name + ".");
+  show('screen-town');
+}
+function leaveTown() {
+  show('screen-travel');
+  if (checkGameEnd()) return;
+  renderTravel();
+}
+function checkRiver() {
+  const river = RIVER_MILES.find(m => m <= S.mileage && !S.riversPassed.includes(m));
+  if (!river) return false;
+  S.riversPassed.push(river);
+  sfxAlert();
+  showEvent("RIVER CROSSING", "A river blocks the trail ahead. How will you cross?", [
+    { label: "FORD THE RIVER (free, risky)", fn: () => resolveRiver('ford') },
+    { label: "CAULK & FLOAT WAGON (free, moderate risk)", fn: () => resolveRiver('float') },
+    { label: "PAY FOR A FERRY ($8, safest)", fn: () => resolveRiver('ferry') }
+  ]);
+  return true;
+}
+function resolveRiver(method) {
+  sfxSplash();
+  if (method === 'ferry') {
+    if (S.money >= 8) { S.money -= 8; log("Paid for a ferry crossing. Safe and dry."); }
+    else { flashBanner("Not enough cash for the ferry!"); return; }
+  } else if (method === 'ford') {
+    if (Math.random() < 0.35) {
+      const lostFood = Math.min(S.food, 20 + Math.floor(Math.random()*30));
+      S.food -= lostFood;
+      log(`The wagon tipped fording the river! Lost ${lostFood} lbs of food.`);
+      if (S.parts > 0 && Math.random() < 0.5) { S.parts--; log("A wagon part was damaged."); }
+    } else {
+      log("Forded the river without incident.");
+    }
+  } else { // float
+    if (Math.random() < 0.15) {
+      const lostFood = Math.min(S.food, 10 + Math.floor(Math.random()*20));
+      S.food -= lostFood;
+      log(`Minor mishap caulking the wagon. Lost ${lostFood} lbs of food.`);
+    } else {
+      log("Caulked the wagon and floated across safely.");
+    }
+  }
+  if (checkLandmark()) return;
+  if (checkGameEnd()) return;
+  show('screen-travel');
+  renderTravel();
+}
+
+function randomVictim() {
+  const a = aliveMembers();
+  return a.length ? a[Math.floor(Math.random() * a.length)] : null;
+}
+
+const TRAIL_EVENTS = [
+  { title: "WAGON WHEEL BREAKS", weight: 3, run: () => {
+      if (S.parts > 0) { S.parts--; return "A wheel splits crossing a rocky patch. You dig out a spare and get rolling again."; }
+      const loss = Math.min(S.money, 15); S.money -= loss;
+      return `A wheel splits crossing a rocky patch. With no spare on hand, a passing blacksmith fixes it for $${loss}.`;
+  }},
+  { title: "AXLE SNAPS", weight: 2, run: () => {
+      if (S.parts > 0) { S.parts--; return "The axle cracks going over a rut. Good thing you packed a spare."; }
+      const loss = Math.min(S.money, 18); S.money -= loss;
+      return `The axle cracks going over a rut. Repairs cost $${loss}.`;
+  }},
+  { title: "MEASLES", weight: 2, run: () => {
+      const v = randomVictim();
+      if (!v) return "Word going around camp is measles is spreading. Your party seems fine, for now.";
+      const loss = 6 + Math.random()*10; v.health = Math.max(0, v.health - loss);
+      return `${v.name} wakes up covered in spots. Measles has a hold on them.`;
+  }},
+  { title: "BAD WATER", weight: 2, run: () => {
+      const v = randomVictim();
+      if (!v) return "A stagnant creek smells foul. You decide against drinking from it.";
+      const loss = 5 + Math.random()*8; v.health = Math.max(0, v.health - loss);
+      return `${v.name} drinks from a bad creek and spends the night sick to their stomach.`;
+  }},
+  { title: "SNAKE IN THE GRASS", weight: 1, run: () => {
+      const v = randomVictim();
+      if (!v || Math.random() < 0.5) return "A rattlesnake startles the oxen, but nobody's hurt.";
+      const loss = 8 + Math.random()*8; v.health = Math.max(0, v.health - loss);
+      return `${v.name} gets a nasty snake bite while gathering firewood.`;
+  }},
+  { title: "BUFFALO STAMPEDE", weight: 2, run: () => {
+      if (Math.random() < 0.4 && S.oxen > 0) { S.oxen--; return "A stampede scatters your oxen — one wanders off for good."; }
+      const gain = 10 + Math.floor(Math.random()*15); S.food += gain;
+      return `A buffalo herd thunders past. You salvage ${gain} lbs of meat from a straggler.`;
+  }},
+  { title: "BERRY BOUNTY", weight: 2, run: () => {
+      const gain = 5 + Math.floor(Math.random()*10); S.food += gain;
+      return `You stumble onto a patch of wild berries. Gained ${gain} lbs of food.`;
+  }},
+  { title: "TRAIL THIEVES", weight: 2, run: () => {
+      const stolen = Math.min(S.food, Math.floor(Math.random()*12));
+      S.food -= stolen;
+      if (stolen === 0) return "Someone prowls near camp overnight, but the dog scares them off before anything's taken.";
+      return `Thieves slip into camp overnight and make off with ${stolen} lbs of food.`;
+  }},
+  { title: "FRIENDLY TRADER", weight: 2, run: () => {
+      const gain = 3 + Math.floor(Math.random()*8); S.food += gain;
+      return `A trader passing the other way swaps you ${gain} lbs of food for news from back home.`;
+  }},
+  { title: "LUCKY HORSESHOE", weight: 1, run: () => {
+      const gain = 5 + Math.floor(Math.random()*10); S.money += gain;
+      return `You spot a horseshoe by the trail and sell it at the next camp. Gained $${gain}.`;
+  }},
+  { title: "LOST BONNET", weight: 1, run: () => {
+      return "A gust of wind sends someone's hat tumbling into the prairie. Mildly annoying. No real harm done.";
+  }},
+  { title: "CHATTY TRAVELER", weight: 1, run: () => {
+      return "A talkative stranger shares trail gossip and a surprisingly good biscuit recipe. Spirits are lifted.";
+  }}
+];
+
+function triggerRandomEvent() {
+  const totalWeight = TRAIL_EVENTS.reduce((sum, e) => sum + e.weight, 0);
+  let roll = Math.random() * totalWeight;
+  let chosen = TRAIL_EVENTS[0];
+  for (const e of TRAIL_EVENTS) {
+    if (roll < e.weight) { chosen = e; break; }
+    roll -= e.weight;
+  }
+  sfxAlert();
+  const outcome = chosen.run();
+  log(outcome);
+  showEvent(chosen.title, outcome, [
+    { label: "CONTINUE", fn: finishEventReturn }
+  ]);
+}
+function finishEventReturn() {
+  if (checkLandmark()) return;
+  if (checkGameEnd()) return;
+  show('screen-travel');
+  renderTravel();
+}
+
+function checkGameEnd() {
+  if (aliveMembers().length === 0) {
+    S.over = true; S.won = false;
+    clearSave();
+    stopMusic(); currentTheme = null; sfxLose();
+    renderEnd(); show('screen-end');
+    return true;
+  }
+  if (S.mileage >= 2000) {
+    S.over = true; S.won = true;
+    clearSave();
+    stopMusic(); currentTheme = null; sfxWin();
+    renderEnd(); show('screen-end');
+    return true;
+  }
+  return false;
+}
+
+function renderEnd() {
+  const el = document.getElementById('endBody');
+  if (S.won) {
+    const score = Math.round((S.money + aliveMembers().length*200 + S.food) * PROFESSIONS[S.profession].mult);
+    el.innerHTML = `<h2 style="text-align:center;">YOU MADE IT!</h2>
+      <p>Your party reached the Willamette Valley on ${MONTHS[S.date.month]} ${S.date.day}, ${S.date.year}.</p>
+      <p>Survivors: ${aliveMembers().map(m=>m.name).join(', ') || 'none'}</p>
+      <p>Final score: ${score}</p>`;
+  } else {
+    el.innerHTML = `<h2 style="text-align:center;">THE TRAIL HAS ENDED</h2>
+      <p>Your entire party perished along the trail, ${Math.round(S.mileage)} miles from Independence.</p>
+      <p>The journey claimed everyone before reaching Oregon.</p>`;
+  }
+}
+function restartGame() { ensureTheme('title'); show('screen-title'); }
+
+/* ============ HUNTING ============ */
+let hunt = null;
+const ANIMAL_SPRITES = {
+  rabbit: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAcCAYAAAAAwr0iAAABOUlEQVR4nN2Xuw3CMBCGfYg6TBAWCEsgegbIBDRR9qBDdAzAAPSIJcgCZAKywFFdZC72+eI8kPilFDZW/s/3sAMgIppfaihAliZ4OR4wSxPUzHPvxRDzMTQaQFnkhnabpQmWRT4PQFU3cDpf27EdcnveJ0BEBAAYAiHlmVTVTcdjkhooi7x9aCxBjhoBKe+UDjsSo0RAMrdrwBeJydqQzEOFOBkAr4HZATTmxhizjHmxpu20UneBxjSmC1QA3FyqeOk3fhipAGzzUE6livedhE4AzY77QqgApDz3gfABuVLgbMP749Y+Q6U+B2j33JTGmqs1Rv/zReST+i6gAtlt918LaBxbhPz9XOou6AshVT9JdQ5UdQMusND9HzIXAbj4V66UV74uBPDzLgDNP6PNetWZe77e0etsfQASs/jWKv19+QAAAABJRU5ErkJggg==",
+  deer: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAsCAYAAAAwwXuTAAACIklEQVR4nO2ZsW6DMBCGj6ozS7ZKVrcoElPWSBmibBnyCnm2vkL3qkMfIBNLtwqpWxZegEw/Oowdn8EmJsq3lGAD/jjbZ1OiGXLYrJrDZtVIyl+ma9Z9SF6wULk1Ug+DSdLWTfXzr7EbF4pC5U1Z1Znp/K3rku+iREQQg0yh8uav+icionf11tbDMcqIZiIITtulMWKn7ZJO22XnHOr1Qp4yXE4X4nz8/LbHs4oguCWnl89G0DddQDJZwSH5j3dNkKRgofLm1oRiAnK6ZJKCwCZpq8v/guQEET0wRJITJU0MGT9lVWe6HId3PdcsyuuPFgy9GJbmN2k90drOdw0oecOmRvlExvYcXl5WddZpeKHy5uv7s3fRfnfsrQc5Q4RMDJG0gfa2gjY5sN8dO79DSXGkgqhrQu9t3tulGGL83lJJ1DUNH45Xmogpx58h6YKo65rkxGNwCjmOK5J4Ca4IdrpoWdXZfneMNomEQI+ubacPrAUI/T3leBQhxtsjiWLS32T4eBz6opMWJBrfg5yzqHRGmxppu6yCrtkpFUblQVycWhSlKYJIuJuQfs2Kjb6Qllwj7ob6imFKUem604SX4Fot6FxdemWxFt46a7Voj8/VRSTonSbwEC6qN2boftAGdvveN6WRedD24FCTUoiZfHSi5xthU3R90LtgCKKsZDBWfSIQ6x+dyX02DM1TcO48BefOwwt6pQlXbhqbu2Lf/yG5AhR9HbiVFh/HAAAAAElFTkSuQmCC",
+  buffalo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEwAAAA0CAYAAAAg5t6HAAAC30lEQVR4nO2avUokQRCAa0UQLthYFoZNLtvA0EfwLQwWg3sCowuNfIILDoN7hMsM5OINDcxMjoXD2EAQhDWqoWyre6q6q3p0rj/YrKd/vqmu/tkBaDQajUajwTMbs/FVN98NlbnbPlbv4+b6su/X8cn5m/b3a3cGQCYqLDuGuFAWQGVhnKhlt4iW/7v99+5Zb3E0ujj2PBunUFnLbtH/UnDlUtE5NFgNXHQBVBKGg5RIikGf5aShrBJpkmfdhVFZFnDSwoFuri93JeJi0QXgLMxaFhJKiw1QI01atloO8+b45HzGidNGWiq6ABz3YV7RRcFVNFw5Y5KoDDqlr35+78uszy6SK/EkhQHEpa3PLlRthHWPsnGtAUYTFUdlafZ/VNpkclgMFIeyNPs/hE7fyU5Jy37QdlyPGZ7SaskK2zPPYZqDtXV7OedMFCGVahJhMUnLbqHukARaJ03QsT5I6rr58xvWp98GyxYJk94+WEpL1cXJk7R59evHoCysP0tYKErSKTqYHHHa570iW53DwmsaKXT6SAefGzGeqITlygqfoSKGclBJex4kp+TR18Ne0MvzEwD4JO8UFvun6tsKD1ke9dUgejSi0fVZ4VJADqKdPgrziq6a5K7Q9DncFLPCvHPXGIRRplmd6QkimcNu7x9mtY86XoSnAuk0HbwPm0LuiiHNaakzaTTCbu8fRv2MoAY5h/U3qyQXXVhp6UrzUZBcC6VgtxX/Q3Tl0ouh0cUJq3GD6k1J7kLe5bBYdN1tH2erbr7zuAXwhoraP/jClsHt0xB7APKVkb6Bz5LTJLI0VLsPqw33QlPCXp6fRFMyO7mnrqXHgpOEElbdfGchrOhPEOwAnf+lN6taUqnB4+M7k3+N6JuLyUMs7re0/bDE/G82Luoo1ouFRSJXtedZOZ0SmENK3jxXX22qf4yS2geN8aW0lsl/jGJNE6akCVPShCkpSvraFc96bzR2+w0Br0wHtLhV82lUAAAAAElFTkSuQmCC",
+};
+const animalImages = {};
+Object.keys(ANIMAL_SPRITES).forEach(k => { const im = new Image(); im.src = ANIMAL_SPRITES[k]; animalImages[k] = im; });
+function openHunt() {
+  ensureTheme('hunt');
+  if (S.bullets <= 0) { flashBanner("You're out of ammunition!"); return; }
+  hunt = {
+    timeLeft: 30,
+    aimAngle: 0,
+    outerRadius: Math.min(canvas.width, canvas.height) / 2 - 20,
+    animals: [],
+    meat: 0,
+    spawnTimer: 0,
+    running: true,
+    lastTs: null
+  };
+  show('screen-hunt');
+  renderHuntHud();
+  requestAnimationFrame(huntLoop);
+}
+function renderHuntHud() {
+  document.getElementById('huntHud').innerHTML = `
+    <div>Time: ${Math.ceil(hunt.timeLeft)}s</div>
+    <div>Ammo: ${S.bullets}</div>
+    <div>Meat gathered: ${hunt.meat} lbs</div>
+    <div>Rotate to face an animal, then tap SHOOT</div>
+  `;
+}
+function spawnAnimal() {
+  const kinds = [
+    { type:'rabbit', img:'rabbit', w:22, h:19, radialSpeed: 34, tolerance: 13, meat: 5 },
+    { type:'deer', img:'deer', w:38, h:30, radialSpeed: 22, tolerance: 18, meat: 20 },
+    { type:'buffalo', img:'buffalo', w:52, h:36, radialSpeed: 15, tolerance: 24, meat: 60 }
+  ];
+  const k = kinds[Math.floor(Math.random()*kinds.length)];
+  hunt.animals.push({
+    ...k,
+    angle: Math.random() * 360,
+    angularDrift: Math.random() * 16 - 8,
+    radius: hunt.outerRadius,
+    alive: true
+  });
+}
+const canvas = document.getElementById('huntCanvas');
+const ctx = canvas.getContext('2d');
+function polarToXY(cx, cy, angleDeg, radius) {
+  const rad = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + radius * Math.cos(rad), y: cy + radius * Math.sin(rad) };
+}
+function huntLoop(ts) {
+  if (!hunt || !hunt.running) return;
+  if (!hunt.lastTs) hunt.lastTs = ts;
+  const dt = Math.min(0.05, (ts - hunt.lastTs) / 1000);
+  hunt.lastTs = ts;
+
+  hunt.timeLeft -= dt;
+  hunt.spawnTimer -= dt;
+  if (hunt.spawnTimer <= 0) {
+    spawnAnimal();
+    hunt.spawnTimer = 0.9 + Math.random()*0.9;
+  }
+  hunt.animals.forEach(a => {
+    if (a.alive) {
+      a.radius -= a.radialSpeed * dt;
+      a.angle = (a.angle + a.angularDrift * dt + 360) % 360;
+    }
+  });
+  hunt.animals = hunt.animals.filter(a => {
+    if (a.alive && a.radius < 8) return false; // slipped past the hunter
+    return a.radius > -20 && (a.alive || a.deadTimer > 0);
+  });
+  hunt.animals.forEach(a => { if (!a.alive) a.deadTimer -= dt; });
+
+  drawHunt();
+  renderHuntHud();
+
+  if (hunt.timeLeft <= 0 || S.bullets <= 0) {
+    endHunt();
+    return;
+  }
+  requestAnimationFrame(huntLoop);
+}
+function drawHunt() {
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#4a7c3f';
+  ctx.fillRect(0, 0, W, H);
+
+  // range rings
+  ctx.strokeStyle = 'rgba(43,29,14,0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, hunt.outerRadius, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, hunt.outerRadius*0.5, 0, Math.PI*2); ctx.stroke();
+
+  // aim cone (visual reference band)
+  const tol = 18;
+  ctx.fillStyle = 'rgba(201,67,58,0.16)';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, hunt.outerRadius, (hunt.aimAngle - tol - 90) * Math.PI/180, (hunt.aimAngle + tol - 90) * Math.PI/180);
+  ctx.lineTo(cx, cy);
+  ctx.fill();
+
+  // aim line
+  ctx.strokeStyle = '#c9433a'; ctx.lineWidth = 3;
+  const tip = polarToXY(cx, cy, hunt.aimAngle, hunt.outerRadius);
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tip.x, tip.y); ctx.stroke();
+
+  // hunter at center
+  ctx.fillStyle = '#2b1d0e';
+  ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI*2); ctx.fill();
+
+  // animals
+  hunt.animals.forEach(a => {
+    const pos = polarToXY(cx, cy, a.angle, Math.max(a.radius, 0));
+    const im = animalImages[a.img];
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+    if (pos.x > cx) ctx.scale(-1, 1); // face toward the hunter at center
+    if (im && im.complete && im.naturalWidth > 0) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(im, -a.w/2, -a.h/2, a.w, a.h);
+    } else {
+      ctx.fillStyle = '#8a7a5a';
+      ctx.fillRect(-a.w/2, -a.h/2, a.w, a.h);
+    }
+    if (!a.alive) {
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = '#c9433a';
+      ctx.fillRect(-a.w/2, -a.h/2, a.w, a.h);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  });
+}
+function aimHunt(deltaDeg) {
+  if (!hunt) return;
+  hunt.aimAngle = (hunt.aimAngle + deltaDeg + 360) % 360;
+}
+function shootHunt() {
+  if (!hunt || S.bullets <= 0) return;
+  S.bullets--;
+  sfxShoot();
+  let hit = null;
+  hunt.animals.forEach(a => {
+    if (!a.alive) return;
+    let diff = Math.abs(a.angle - hunt.aimAngle);
+    if (diff > 180) diff = 360 - diff;
+    if (diff <= a.tolerance) hit = a;
+  });
+  if (hit) {
+    hit.alive = false;
+    hit.deadTimer = 0.3;
+    hunt.meat += hit.meat;
+    sfxHit();
+  }
+  renderHuntHud();
+}
+let aimInterval = null;
+function bindHold(el, fn) {
+  const start = (e) => { e.preventDefault(); fn(); aimInterval = setInterval(fn, 60); };
+  const stop = () => { clearInterval(aimInterval); };
+  el.addEventListener('touchstart', start);
+  el.addEventListener('mousedown', start);
+  el.addEventListener('touchend', stop);
+  el.addEventListener('mouseup', stop);
+  el.addEventListener('mouseleave', stop);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  bindHold(document.getElementById('aimLeft'), () => aimHunt(-9));
+  bindHold(document.getElementById('aimRight'), () => aimHunt(9));
+  document.getElementById('huntShoot').addEventListener('click', shootHunt);
+});
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+function endHunt() {
+  if (!hunt) return;
+  ensureTheme('trail');
+  hunt.running = false;
+  const meat = Math.min(hunt.meat, 100);
+  S.food += meat;
+  log(`Hunting trip yielded ${meat} lbs of meat.`);
+  hunt = null;
+  show('screen-travel');
+  renderTravel();
+}
+</script>
+</body>
+</html>
