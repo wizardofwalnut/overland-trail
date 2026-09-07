@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>The Overland Trail</title>
+<meta name="description" content="A retro-style wagon trail survival game. Manage supplies, cross rivers, hunt for food, and lead your party west.">
+<meta name="theme-color" content="#2b1d0e">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  html, body {
+    color-scheme: light only;
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #1b1b14;
+    font-family: 'Press Start 2P', monospace;
+    image-rendering: pixelated;
+  }
+  #bezel {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #1b1b14;
+  }
+  #game {
+    position: relative;
+    width: 100%; height: 100%;
+    max-width: 480px; max-height: 900px;
+    background: #e9dcb5;
+    border: 6px solid #2b1d0e;
+    overflow: hidden;
+  }
+  .screen {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    padding: 10px;
+    overflow-y: auto;
+  }
+  .screen.active { display: flex; }
+  h1, h2, h3 { margin: 6px 0; text-shadow: 2px 2px 0 #b8a878; color: #2b1d0e; }
+  h1 { font-size: 15px; text-align:center; }
+  h2 { font-size: 11px; }
+  h3 { font-size: 9px; }
+  p, label, span, div.txt { font-size: 8px; line-height: 1.6; color: #2b1d0e; }
+  .panel {
+    background: #f5ecd0; border: 3px solid #2b1d0e; border-radius: 2px;
+    padding: 8px; margin-bottom: 8px; box-shadow: inset 0 0 0 2px #cbb98a;
+  }
+  button {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    background: #8b5a2b;
+    color: #f5ecd0;
+    border: 3px solid #2b1d0e;
+    border-radius: 2px;
+    padding: 10px 6px;
+    margin: 4px 0;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #2b1d0e;
+    width: 100%;
+    text-align: left;
+  }
+  button:active { transform: translateY(2px); box-shadow: 0 1px 0 #2b1d0e; }
+  button.small { width: auto; display: inline-block; text-align: center; }
+  button.green { background: #3d6b2e; }
+  button.red { background: #7a2b1e; }
+  button.blue { background: #2b4a6b; }
+  input[type=text] {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px; padding: 6px; width: 100%;
+    border: 2px solid #2b1d0e; background: #fff8e6; margin-bottom: 6px;
+  }
+  .row { display: flex; gap: 6px; }
+  .row > * { flex: 1; }
+  .hud {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    background: #2b1d0e; color: #e9dcb5; padding: 6px; border-radius: 2px;
+    font-size: 7px; margin-bottom: 6px;
+  }
+  .hud div { padding: 2px 0; }
+  .scene {
+    position: relative; height: 140px; background: linear-gradient(to bottom, #7ec8e3 0%, #7ec8e3 55%, #4a7c3f 55%, #3d6b2e 100%);
+    border: 3px solid #2b1d0e; margin-bottom: 6px; overflow: hidden;
+  }
+  .sun { position: absolute; top: 8px; right: 14px; width: 18px; height: 18px; background: #f5d547; border-radius: 50%; box-shadow: 0 0 0 3px #d9b830; }
+  .cloud { position: absolute; top: 14px; width: 30px; height: 10px; background: #fff; opacity:.85; border-radius: 6px; }
+  .wagon {
+    position: absolute; bottom: 18px; left: 40%; width: 46px; height: 30px;
+  }
+  .wagon .body { position:absolute; bottom:8px; left:4px; width:38px; height:16px; background:#8b5a2b; border:2px solid #2b1d0e; }
+  .wagon .cover { position:absolute; bottom:20px; left:6px; width:34px; height:10px; background:#f0e6d2; border:2px solid #2b1d0e; border-radius:8px 8px 0 0; }
+  .wagon .wheel { position:absolute; bottom:2px; width:10px; height:10px; background:#2b1d0e; border-radius:50%; border:2px solid #1b1204; }
+  .wagon .wheel.w1 { left:6px; } .wagon .wheel.w2 { left:26px; }
+  .ground-strip { position:absolute; bottom:0; left:0; right:0; height:18px; background:#5c3a21; border-top:2px solid #2b1d0e; }
+  .list-item { display:flex; justify-content:space-between; font-size:8px; padding:3px 0; border-bottom:1px dashed #cbb98a; }
+  .member-health-good { color:#2f6b1f; }
+  .member-health-fair { color:#7a6a1e; }
+  .member-health-poor { color:#a84a1e; }
+  .member-health-verypoor { color:#8b1e1e; }
+  .member-health-dead { color:#555; text-decoration: line-through; }
+  #huntCanvas { width:100%; height:300px; display:block; background:#4a7c3f; border:3px solid #2b1d0e; touch-action:none; }
+  .huntControls { display:flex; gap:6px; margin-top:6px; align-items:center; }
+  .huntControls button { flex:1; }
+  #huntShoot { background:#7a2b1e; font-size:10px; }
+  .banner {
+    position:absolute; top:6px; left:6px; right:6px; background:#2b1d0e; color:#f5ecd0;
+    padding:6px; font-size:8px; text-align:center; border:2px solid #f5ecd0; z-index:5; display:none;
+  }
+  .footer-nav { margin-top:auto; display:flex; gap:6px; }
+  .scroll { flex:1; overflow-y:auto; }
+  .cardRow { display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap; }
+  .pokerCard {
+    width: 50px; height: 70px; background:#fff8e6; border:2px solid #2b1d0e; border-radius:4px;
+    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:bold;
+    position:relative; color:#2b1d0e;
+  }
+  .pokerCard.red { color:#a83232; }
+  .pokerCard.back {
+    background: repeating-linear-gradient(45deg, #6b4321 0 5px, #8b5a2b 5px 10px);
+  }
+  .pokerCard.held { border-color:#3d6b2e; box-shadow: 0 0 0 2px #3d6b2e; }
+  .holdTag { position:absolute; bottom:2px; font-size:6px; color:#3d6b2e; }
+</style>
+</head>
+<body>
+<div id="bezel"><div id="game">
+  <button id="audioToggle" onclick="toggleAudio()" style="position:absolute; top:6px; right:6px; width:34px; height:34px; padding:0; margin:0; font-size:14px; z-index:50; line-height:1;">&#9834;</button>
+
+
+  <!-- TITLE -->
+  <div class="screen active" id="screen-title">
+    <div style="margin-top:40%; text-align:center;">
+      <h1>THE<br>OVERLAND TRAIL</h1>
+      <p style="text-align:center; margin: 16px 0;">Independence, Missouri<br>to the<br>Willamette Valley</p>
+      <button class="blue" id="continueBtn" style="display:none; text-align:center; margin-top:12px;" onclick="continueSavedGame()">CONTINUE JOURNEY</button>
+      <button class="green" onclick="goSetup()" style="text-align:center; margin-top:12px;">START NEW JOURNEY</button>
+    </div>
+  </div>
+
+  <!-- SETUP -->
+  <div class="screen" id="screen-setup">
+    <h2>CHOOSE YOUR OCCUPATION</h2>
+    <div class="scroll">
+      <div class="panel">
+        <button onclick="chooseProfession('banker')">BANKER &mdash; $1600<br><span style="font-size:6px;">Easy start, low score bonus</span></button>
+        <button onclick="chooseProfession('carpenter')">CARPENTER &mdash; $1200<br><span style="font-size:6px;">Balanced start &amp; bonus</span></button>
+        <button onclick="chooseProfession('farmer')">FARMER &mdash; $800<br><span style="font-size:6px;">Hard start, high score bonus</span></button>
+      </div>
+      <div class="panel" id="namesPanel" style="display:none;">
+        <h3>NAME YOUR PARTY</h3>
+        <input type="text" id="name0" placeholder="Party Leader (You)" value="You">
+        <input type="text" id="name1" placeholder="Member 2" value="Sam">
+        <input type="text" id="name2" placeholder="Member 3" value="Alex">
+        <input type="text" id="name3" placeholder="Member 4" value="Jo">
+        <button class="green" onclick="finishSetup()">HEAD TO THE STORE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STORE -->
+  <div class="screen" id="screen-store">
+    <h2>MATT'S GENERAL STORE</h2>
+    <div class="panel"><span id="storeMoney"></span></div>
+    <div class="scroll">
+      <div class="panel">
+        <div class="list-item"><span>Oxen (per yoke, $40)</span><span id="oxenCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('oxen',-1)">&minus;</button><button class="small" onclick="buy('oxen',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Food, lbs ($0.20/lb)</span><span id="foodCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('food',-50)">&minus;50</button><button class="small" onclick="buy('food',50)">+50</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Ammo, boxes of 20 ($2)</span><span id="bulletsCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('bullets',-1)">&minus;</button><button class="small" onclick="buy('bullets',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Clothing sets ($10)</span><span id="clothingCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('clothing',-1)">&minus;</button><button class="small" onclick="buy('clothing',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Spare wagon parts ($10 each)</span><span id="partsCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('parts',-1)">&minus;</button><button class="small" onclick="buy('parts',1)">+</button></div>
+      </div>
+    </div>
+    <button class="green" onclick="departFromStore()">DEPART FOR OREGON</button>
+  </div>
+
+  <!-- TRAVEL -->
+  <div class="screen" id="screen-travel">
+    <div class="banner" id="banner"></div>
+    <div class="hud" id="hud"></div>
+    <div class="scene" id="scene">
+      <div class="sun"></div>
+      <div class="cloud" style="left:15%;"></div>
+      <div class="cloud" style="left:60%; top:24px; width:22px;"></div>
+      <div class="wagon">
+        <div class="cover"></div>
+        <div class="body"></div>
+        <div class="wheel w1"></div>
+        <div class="wheel w2"></div>
+      </div>
+      <div class="ground-strip"></div>
+    </div>
+    <div class="scroll" id="log"></div>
+    <div class="panel" style="margin-top:6px;">
+      <div class="row">
+        <button class="green" onclick="continueTrail()">CONTINUE TRAIL</button>
+        <button class="blue" onclick="openHunt()">HUNT</button>
+      </div>
+      <div class="row">
+        <button onclick="restParty()">REST A DAY</button>
+      </div>
+      <div class="row">
+        <button onclick="openPaceMenu()">PACE: <span id="paceLbl"></span></button>
+        <button onclick="openRationsMenu()">RATIONS: <span id="rationLbl"></span></button>
+      </div>
+      <button onclick="openSupplies()">CHECK SUPPLIES &amp; PARTY</button>
+    </div>
+  </div>
+
+  <!-- TOWN -->
+  <div class="screen" id="screen-town">
+    <h2 id="townName">TOWN</h2>
+    <div class="scroll">
+      <div class="panel"><span id="townStoreMoney"></span></div>
+      <div class="panel">
+        <div class="list-item"><span>Oxen (per yoke, $40)</span><span id="townOxenCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('oxen',-1)">&minus;</button><button class="small" onclick="buy('oxen',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Food, lbs ($0.20/lb)</span><span id="townFoodCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('food',-50)">&minus;50</button><button class="small" onclick="buy('food',50)">+50</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Ammo, boxes of 20 ($2)</span><span id="townBulletsCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('bullets',-1)">&minus;</button><button class="small" onclick="buy('bullets',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Clothing sets ($10)</span><span id="townClothingCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('clothing',-1)">&minus;</button><button class="small" onclick="buy('clothing',1)">+</button></div>
+
+        <div class="list-item" style="margin-top:6px;"><span>Spare wagon parts ($10 each)</span><span id="townPartsCount">0</span></div>
+        <div class="row"><button class="small" onclick="buy('parts',-1)">&minus;</button><button class="small" onclick="buy('parts',1)">+</button></div>
+      </div>
+    </div>
+    <button class="blue" id="townPokerBtn" onclick="openPoker()" style="display:none;">PLAY POKER AT THE SALOON</button>
+    <button class="green" onclick="leaveTown()">CONTINUE ON TRAIL</button>
+  </div>
+
+  <!-- POKER -->
+  <div class="screen" id="screen-poker">
+    <h2>SALOON POKER</h2>
+    <div class="scroll" id="pokerTable"></div>
+  </div>
+
+  <!-- EVENT / MODAL -->
+  <div class="screen" id="screen-event">
+    <h2 id="eventTitle">EVENT</h2>
+    <div class="scroll panel" id="eventBody"></div>
+    <div id="eventChoices"></div>
+  </div>
+
+  <!-- HUNT -->
+  <div class="screen" id="screen-hunt">
+    <h2>HUNTING</h2>
+    <div class="hud" id="huntHud"></div>
+    <canvas id="huntCanvas" width="440" height="340"></canvas>
+    <div class="huntControls">
+      <button class="small" id="aimLeft">&#9664; ROTATE</button>
+      <button class="small" id="huntShoot">SHOOT</button>
+      <button class="small" id="aimRight">ROTATE &#9654;</button>
+    </div>
+    <button class="red" onclick="endHunt()" style="margin-top:6px;">LEAVE HUNTING GROUNDS</button>
+  </div>
+
+  <!-- END -->
+  <div class="screen" id="screen-end">
+    <div class="scroll panel" id="endBody" style="margin-top:30%;"></div>
+    <button class="green" onclick="restartGame()">PLAY AGAIN</button>
+  </div>
+
+</div></div>
+
+<script>const PROFESSIONS={banker:{money:1600,mult:1},carpenter:{money:1200,mult:2},farmer:{money:800,mult:3}},PACE={steady:{miles:14,risk:1},strenuous:{miles:20,risk:1.6},grueling:{miles:26,risk:2.4}},RATIONS={filling:{lbs:3,risk:1},meager:{lbs:2,risk:1.5},bareBones:{lbs:1,risk:2.3}},LANDMARKS=[{name:"Fort Kearney",mile:300,town:!0,poker:!0},{name:"Chimney Rock",mile:550,town:!1},{name:"Fort Laramie",mile:640,town:!0,poker:!0},{name:"Independence Rock",mile:830,town:!1},{name:"South Pass",mile:940,town:!1},{name:"Fort Bridger",mile:1030,town:!0,poker:!1},{name:"Fort Hall",mile:1280,town:!0,poker:!0},{name:"Fort Boise",mile:1550,town:!0,poker:!1},{name:"The Dalles",mile:1830,town:!0,poker:!0},{name:"Willamette Valley",mile:2e3,town:!1}],RIVER_MILES=[420,780,1150,1620],MONTHS=["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];let S=null,actx=null,musicGain=null,sfxGain=null,audioEnabled="0"!==localStorage.getItem("overlandTrailAudioPref"),musicTimer=null,currentTheme=null;const NOTES={C3:130.81,D3:146.83,E3:164.81,F3:174.61,G3:196,A3:220,B3:246.94,C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392,A4:440,B4:493.88,C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99,A5:880};function initAudio(){if(!actx)try{actx=new(window.AudioContext||window.webkitAudioContext),musicGain=actx.createGain(),musicGain.gain.value=.2,musicGain.connect(actx.destination),sfxGain=actx.createGain(),sfxGain.gain.value=.45,sfxGain.connect(actx.destination)}catch(e){}}function ensureAudio(){actx||initAudio(),actx&&"suspended"===actx.state&&actx.resume()}function playTone(e,t,n,a,o,r){if(!actx||!audioEnabled)return;const i=actx.createOscillator();i.type=a||"square",i.frequency.value=e;const s=actx.createGain();s.gain.setValueAtTime(Math.max(o,1e-4),t),s.gain.exponentialRampToValueAtTime(1e-4,t+n),i.connect(s),s.connect(r||sfxGain),i.start(t),i.stop(t+n+.03)}function playNoise(e,t,n,a,o,r){if(!actx||!audioEnabled)return;const i=Math.max(1,Math.floor(actx.sampleRate*t)),s=actx.createBuffer(1,i,actx.sampleRate),l=s.getChannelData(0);for(let e=0;e<i;e++)l[e]=2*Math.random()-1;const c=actx.createBufferSource();c.buffer=s;const d=actx.createBiquadFilter();d.type=o||"lowpass",d.frequency.value=a||1200;const u=actx.createGain();u.gain.setValueAtTime(Math.max(n,1e-4),e),u.gain.exponentialRampToValueAtTime(1e-4,e+t),c.connect(d),d.connect(u),u.connect(r||sfxGain),c.start(e)}function sfxClick(){actx&&playTone(700,actx.currentTime,.05,"square",.1,sfxGain)}function sfxBuy(){if(!actx)return;const e=actx.currentTime;playTone(880,e,.07,"square",.12,sfxGain),playTone(1320,e+.06,.09,"square",.1,sfxGain)}function sfxSell(){if(!actx)return;const e=actx.currentTime;playTone(660,e,.07,"square",.1,sfxGain),playTone(440,e+.06,.09,"square",.09,sfxGain)}function sfxStep(){actx&&playNoise(actx.currentTime,.08,.08,500,"lowpass",sfxGain)}function sfxRest(){if(!actx)return;const e=actx.currentTime;playTone(NOTES.C4,e,.3,"triangle",.1,sfxGain),playTone(NOTES.E4,e+.1,.3,"triangle",.09,sfxGain)}function sfxAlert(){if(!actx)return;const e=actx.currentTime;playTone(NOTES.A4,e,.12,"square",.11,sfxGain),playTone(NOTES.A4,e+.16,.12,"square",.11,sfxGain)}function sfxLandmark(){if(!actx)return;const e=actx.currentTime;playTone(NOTES.C4,e,.14,"square",.1,sfxGain),playTone(NOTES.E4,e+.13,.14,"square",.1,sfxGain),playTone(NOTES.G4,e+.26,.22,"square",.11,sfxGain)}function sfxSplash(){if(!actx)return;const e=actx.currentTime;playNoise(e,.5,.18,900,"lowpass",sfxGain),playNoise(e+.05,.3,.1,1800,"highpass",sfxGain)}function sfxShoot(){if(!actx)return;const e=actx.currentTime;playNoise(e,.12,.22,2200,"highpass",sfxGain),playTone(140,e,.08,"square",.12,sfxGain)}function sfxHit(){if(!actx)return;const e=actx.currentTime;playTone(NOTES.E5,e,.08,"square",.13,sfxGain),playTone(NOTES.A5,e+.07,.12,"square",.12,sfxGain)}function sfxWin(){if(!actx)return;const e=actx.currentTime;[["C4",0],["E4",.18],["G4",.36],["C5",.54],["G4",.72],["C5",.9]].forEach(([t,n])=>playTone(NOTES[t],e+n,.24,"square",.14,sfxGain))}function sfxLose(){if(!actx)return;const e=actx.currentTime;[["A3",0],["G3",.3],["F3",.6],["D3",.9]].forEach(([t,n])=>playTone(NOTES[t],e+n,.5,"triangle",.12,sfxGain))}function scheduleTitleTheme(e){const t=["G3","B3","D4","G3","C4","E4","D4","B3"];return t.forEach((t,n)=>playTone(NOTES[t],e+.6*n,.51,"triangle",.09,musicGain)),.6*t.length}function scheduleTrailTheme(e){const t=["G4","A4","B4","C5","B4","A4","G4","E4","D4","E4","G4","A4","G4","E4","D4","G3"],n=.42;return t.forEach((t,a)=>playTone(NOTES[t],e+a*n,.378,"square",.065,musicGain)),["C3","C3","G3","G3","C3","C3","G3","G3","F3","F3","C3","C3","F3","F3","G3","G3"].forEach((t,a)=>playTone(NOTES[t],e+a*n,.378,"triangle",.08,musicGain)),t.length*n}function scheduleHuntTheme(e){const t=["C4","E4","G4","C5","G4","E4","C4","D4","F4","A4","D5","A4","F4","D4","C4","B3"],n=.24;return t.forEach((t,a)=>playTone(NOTES[t],e+a*n,.204,"square",.065,musicGain)),["C3","C3","C3","C3","F3","F3","F3","F3","G3","G3","G3","G3","C3","C3","C3","C3"].forEach((t,a)=>playTone(NOTES[t],e+a*n,.204,"triangle",.08,musicGain)),t.length*n}document.addEventListener("click",function e(){if(ensureAudio(),currentTheme){const e=currentTheme;currentTheme=null,ensureTheme(e)}document.removeEventListener("click",e)},{once:!0});const THEMES={title:scheduleTitleTheme,trail:scheduleTrailTheme,hunt:scheduleHuntTheme};function playMusicLoop(e){musicTimer&&clearTimeout(musicTimer),function t(){if(!audioEnabled||!actx)return;const n=actx.currentTime+.05,a=e(n);musicTimer=setTimeout(t,Math.max(200,1e3*a-60))}()}function stopMusic(){musicTimer&&clearTimeout(musicTimer),musicTimer=null}function ensureTheme(e){if(currentTheme=e,!audioEnabled||!actx)return;stopMusic();const t=THEMES[e];t&&playMusicLoop(t)}function toggleAudio(){audioEnabled=!audioEnabled,localStorage.setItem("overlandTrailAudioPref",audioEnabled?"1":"0");const e=document.getElementById("audioToggle");e&&(e.textContent=audioEnabled?"♪":"✕"),audioEnabled?(ensureAudio(),currentTheme&&ensureTheme(currentTheme)):stopMusic()}function freshState(){return{profession:null,money:0,members:[],oxen:0,food:0,bullets:0,clothing:0,parts:0,pace:"steady",rations:"filling",mileage:0,date:{month:3,day:1,year:1848},weather:"Mild",landmarksPassed:[],riversPassed:[],logEntries:[],over:!1,won:!1}}function show(e){document.querySelectorAll(".screen").forEach(e=>e.classList.remove("active")),document.getElementById(e).classList.add("active")}function log(e){S.logEntries.unshift(e),S.logEntries.length>12&&S.logEntries.pop(),renderLog()}function renderLog(){document.getElementById("log").innerHTML=S.logEntries.map(e=>`<div class="txt">&raquo; ${e}</div>`).join("")}function flashBanner(e){const t=document.getElementById("banner");t.textContent=e,t.style.display="block",clearTimeout(t._t),t._t=setTimeout(()=>t.style.display="none",2200)}function goSetup(){clearSave(),S=freshState(),ensureTheme("trail"),show("screen-setup")}document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("button");t&&"aimLeft"!==t.id&&"aimRight"!==t.id&&"audioToggle"!==t.id&&sfxClick()});const SAVE_KEY="overlandTrailSave_v1";function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}function loadGame(){try{const e=localStorage.getItem(SAVE_KEY);return e?JSON.parse(e):null}catch(e){return null}}function clearSave(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}function continueSavedGame(){const e=loadGame();e?(S=e,show("screen-travel"),renderTravel()):flashBanner("No saved journey found.")}function chooseProfession(e){S.profession=e,S.money=PROFESSIONS[e].money,document.getElementById("namesPanel").style.display="block"}function finishSetup(){const e=[0,1,2,3].map(e=>document.getElementById("name"+e).value.trim()||"Traveler "+(e+1));S.members=e.map(e=>({name:e,health:100})),show("screen-store"),renderStore()}function renderStore(){refreshStoreUI()}function refreshStoreUI(){[{money:"storeMoney",oxen:"oxenCount",food:"foodCount",bullets:"bulletsCount",clothing:"clothingCount",parts:"partsCount"},{money:"townStoreMoney",oxen:"townOxenCount",food:"townFoodCount",bullets:"townBulletsCount",clothing:"townClothingCount",parts:"townPartsCount"}].forEach(e=>{const t=document.getElementById(e.money);t&&(t.textContent="Cash on hand: $"+S.money.toFixed(2),document.getElementById(e.oxen).textContent=S.oxen+" yoke",document.getElementById(e.food).textContent=S.food+" lbs",document.getElementById(e.bullets).textContent=S.bullets+" rounds",document.getElementById(e.clothing).textContent=S.clothing+" sets",document.getElementById(e.parts).textContent=S.parts+" parts")})}function buy(e,t){const n={oxen:40,food:.2,bullets:.1,clothing:10,parts:10}[e];let a=t;if("bullets"===e&&(a=20*t),a<0){const t=S[e];if(a=-Math.min(Math.abs(a),t),0===a)return}else if(a>0){const e=n*a;if(S.money<e)return void flashBanner("Not enough cash!")}const o=n*a;S[e]=Math.max(0,S[e]+a),S.money-=o,a>0?sfxBuy():sfxSell(),S.money=Math.round(100*S.money)/100,refreshStoreUI()}function departFromStore(){S.oxen<1?flashBanner("You need at least 1 yoke of oxen!"):S.food<50?flashBanner("You should buy more food!"):(log("Departed Independence, Missouri."),show("screen-travel"),renderTravel())}document.addEventListener("DOMContentLoaded",()=>{const e=loadGame(),t=document.getElementById("continueBtn");e&&!e.over&&t&&(t.style.display="block"),currentTheme="title";const n=document.getElementById("audioToggle");n&&(n.textContent=audioEnabled?"♪":"✕")});let poker=null;function freshDeck(){const e=["♠","♥","♦","♣"],t=[];for(const n of e)for(let e=2;e<=14;e++)t.push({rank:e,suit:n});for(let e=t.length-1;e>0;e--){const n=Math.floor(Math.random()*(e+1));[t[e],t[n]]=[t[n],t[e]]}return t}function evaluateHand(e){const t=e.map(e=>e.rank).sort((e,t)=>t-e),n=e.map(e=>e.suit),a={};t.forEach(e=>a[e]=(a[e]||0)+1);const o=Object.entries(a).map(([e,t])=>({r:+e,c:t})).sort((e,t)=>t.c-e.c||t.r-e.r),r=n.every(e=>e===n[0]),i=[...new Set(t)];let s=!1,l=0;5===i.length&&(i[0]-i[4]===4?(s=!0,l=i[0]):"14,5,4,3,2"===i.join(",")&&(s=!0,l=5));const c=o.map(e=>e.r);return s&&r?{rank:8,tiebreak:[l],name:"Straight Flush"}:4===o[0].c?{rank:7,tiebreak:c,name:"Four of a Kind"}:3===o[0].c&&o[1]&&2===o[1].c?{rank:6,tiebreak:c,name:"Full House"}:r?{rank:5,tiebreak:t,name:"Flush"}:s?{rank:4,tiebreak:[l],name:"Straight"}:3===o[0].c?{rank:3,tiebreak:c,name:"Three of a Kind"}:2===o[0].c&&o[1]&&2===o[1].c?{rank:2,tiebreak:c,name:"Two Pair"}:2===o[0].c?{rank:1,tiebreak:c,name:"Pair"}:{rank:0,tiebreak:t,name:"High Card"}}function compareHands(e,t){if(e.rank!==t.rank)return e.rank-t.rank;const n=Math.max(e.tiebreak.length,t.tiebreak.length);for(let a=0;a<n;a++){const n=e.tiebreak[a]||0,o=t.tiebreak[a]||0;if(n!==o)return n-o}return 0}function openPoker(){poker={bet:Math.min(10,Math.floor(S.money))||5,stage:"bet"},renderPoker(),show("screen-poker")}function setPokerBet(e){poker.bet=Math.max(5,Math.min(Math.floor(S.money),e)),sfxClick(),renderPoker()}function dealPoker(){S.money<poker.bet?flashBanner("Not enough cash for that bet!"):(poker.deck=freshDeck(),poker.playerHand=poker.deck.splice(0,5),poker.dealerHand=poker.deck.splice(0,5),poker.held=[!1,!1,!1,!1,!1],poker.stage="drawn0",S.money-=poker.bet,sfxBuy(),renderPoker())}function toggleHold(e){poker&&"drawn0"===poker.stage&&(poker.held[e]=!poker.held[e],sfxClick(),renderPoker())}function drawPoker(){for(let e=0;e<5;e++)poker.held[e]||(poker.playerHand[e]=poker.deck.shift());const e={};poker.dealerHand.forEach(t=>e[t.rank]=(e[t.rank]||0)+1);for(let t=0;t<5;t++)e[poker.dealerHand[t].rank]<2&&(poker.dealerHand[t]=poker.deck.shift());poker.playerEval=evaluateHand(poker.playerHand),poker.dealerEval=evaluateHand(poker.dealerHand);const t=compareHands(poker.playerEval,poker.dealerEval);t>0?(poker.result="win",S.money+=2*poker.bet,sfxWin()):t<0?(poker.result="lose",sfxLose()):(poker.result="push",S.money+=poker.bet),poker.stage="result",saveGame(),renderPoker()}function pokerPlayAgain(){poker.stage="bet",poker.bet=Math.min(poker.bet,Math.floor(S.money))||5,renderPoker()}function leavePoker(){poker=null,refreshStoreUI(),show("screen-town")}function cardHTML(e,t,n,a,o){return t?'<div class="pokerCard back"></div>':`<div class="${"pokerCard"+("♥"===e.suit||"♦"===e.suit?" red":"")+(n?" held":"")}"${o?` onclick="toggleHold(${a})"`:""}>${{11:"J",12:"Q",13:"K",14:"A"}[e.rank]||e.rank}${e.suit}${n?'<div class="holdTag">HOLD</div>':""}</div>`}function renderPoker(){const e=document.getElementById("pokerTable");if("bet"===poker.stage){const t=Math.floor(S.money);e.innerHTML=`\n      <h3>PLACE YOUR WAGER</h3>\n      <div class="panel">Cash on hand: ${S.money.toFixed(2)}</div>\n      <div class="row">\n        ${[5,10,25,50].map(e=>`<button class="small"${e>t?" disabled":""} onclick="setPokerBet(${e})">${e}</button>`).join("")}\n      </div>\n      <div class="panel">Current wager: ${poker.bet.toFixed(2)}</div>\n      <button class="green" onclick="dealPoker()">DEAL</button>\n      <button class="red" onclick="leavePoker()">LEAVE TABLE</button>\n    `}else if("drawn0"===poker.stage)e.innerHTML=`\n      <h3>YOUR HAND (tap to hold, then draw)</h3>\n      <div class="cardRow">${poker.playerHand.map((e,t)=>cardHTML(e,!1,poker.held[t],t,!0)).join("")}</div>\n      <h3>DEALER</h3>\n      <div class="cardRow">${poker.dealerHand.map(()=>cardHTML(null,!0)).join("")}</div>\n      <div class="panel">Wager: ${poker.bet.toFixed(2)}</div>\n      <button class="green" onclick="drawPoker()">DRAW</button>\n    `;else if("result"===poker.stage){const t="win"===poker.result?`YOU WIN ${poker.bet.toFixed(2)}!`:"lose"===poker.result?`YOU LOSE ${poker.bet.toFixed(2)}.`:"PUSH — WAGER RETURNED.";e.innerHTML=`\n      <h3>YOUR HAND — ${poker.playerEval.name}</h3>\n      <div class="cardRow">${poker.playerHand.map(e=>cardHTML(e,!1,!1,0,!1)).join("")}</div>\n      <h3>DEALER — ${poker.dealerEval.name}</h3>\n      <div class="cardRow">${poker.dealerHand.map(e=>cardHTML(e,!1,!1,0,!1)).join("")}</div>\n      <div class="panel" style="text-align:center;">${t}</div>\n      <button class="green" onclick="pokerPlayAgain()">PLAY AGAIN</button>\n      <button class="red" onclick="leavePoker()">LEAVE TABLE</button>\n    `}}function aliveMembers(){return S.members.filter(e=>e.health>0)}function healthLabel(e){return e<=0?{text:"DEAD",cls:"dead"}:e>=75?{text:"GOOD",cls:"good"}:e>=50?{text:"FAIR",cls:"fair"}:e>=25?{text:"POOR",cls:"poor"}:{text:"VERY POOR",cls:"verypoor"}}function nextLandmark(){return LANDMARKS.find(e=>e.mile>S.mileage)||LANDMARKS[LANDMARKS.length-1]}function renderTravel(){document.getElementById("paceLbl").textContent=S.pace.toUpperCase(),document.getElementById("rationLbl").textContent=S.rations.toUpperCase();const e=nextLandmark(),t=Math.max(0,e.mile-S.mileage);document.getElementById("hud").innerHTML=`\n    <div>Date: ${MONTHS[S.date.month]} ${S.date.day}, ${S.date.year}</div>\n    <div>Weather: ${S.weather}</div>\n    <div>Miles traveled: ${S.mileage} / 2000</div>\n    <div>Next: ${e.name} (${t} mi)</div>\n    <div>Food: ${S.food} lbs</div>\n    <div>Cash: ${S.money.toFixed(2)}</div>\n    <div>Ammo: ${S.bullets}</div>\n    <div>Oxen: ${S.oxen} yoke</div>\n  `,renderLog(),saveGame(),ensureTheme("trail")}function openPaceMenu(){showEvent("SET PACE","Choose your traveling pace. Faster paces cover more ground but wear down your party's health.",[{label:"STEADY (safer)",fn:()=>{S.pace="steady",closeEvent()}},{label:"STRENUOUS",fn:()=>{S.pace="strenuous",closeEvent()}},{label:"GRUELLING (risky)",fn:()=>{S.pace="grueling",closeEvent()}}])}function openRationsMenu(){showEvent("SET RATIONS","Choose how much food your party eats each day. Skimping saves food but risks illness.",[{label:"FILLING",fn:()=>{S.rations="filling",closeEvent()}},{label:"MEAGER",fn:()=>{S.rations="meager",closeEvent()}},{label:"BARE BONES (risky)",fn:()=>{S.rations="bareBones",closeEvent()}}])}function openSupplies(){const e=S.members.map(e=>{const t=healthLabel(e.health);return`<div class="list-item"><span>${e.name}</span><span class="member-health-${t.cls}">${t.text}</span></div>`}).join("");showEvent("SUPPLIES & PARTY",`\n    <div class="list-item"><span>Cash</span><span>${S.money.toFixed(2)}</span></div>\n    <div class="list-item"><span>Food</span><span>${S.food} lbs</span></div>\n    <div class="list-item"><span>Ammo</span><span>${S.bullets} rounds</span></div>\n    <div class="list-item"><span>Oxen</span><span>${S.oxen} yoke</span></div>\n    <div class="list-item"><span>Clothing</span><span>${S.clothing} sets</span></div>\n    <div class="list-item"><span>Spare parts</span><span>${S.parts}</span></div>\n    <h3>PARTY</h3>${e}\n  `,[{label:"CLOSE",fn:closeEvent}])}function showEvent(e,t,n){document.getElementById("eventTitle").textContent=e,document.getElementById("eventBody").innerHTML=t,document.getElementById("eventChoices").innerHTML="",n.forEach(e=>{const t=document.createElement("button");t.textContent=e.label,t.onclick=e.fn,document.getElementById("eventChoices").appendChild(t)}),show("screen-event")}function closeEvent(){if(S.over)return renderEnd(),void show("screen-end");show("screen-travel"),renderTravel()}function advanceDate(e){for(let t=0;t<e;t++){S.date.day++;const e=[31,28,31,30,31,30,31,31,30,31,30,31][S.date.month-1];S.date.day>e&&(S.date.day=1,S.date.month++),S.date.month>12&&(S.date.month=1,S.date.year++)}}function rollWeather(){const e=S.date.month,t=e<=4||e>=10?["Cold","Rainy","Mild","Freezing"]:["Hot","Mild","Sunny","Stormy"];S.weather=t[Math.floor(Math.random()*t.length)]}function continueTrail(){if(S.over)return;sfxStep();const e=PACE[S.pace],t=RATIONS[S.rations];rollWeather(),advanceDate(1);const n=aliveMembers().length*t.lbs;S.food=Math.max(0,S.food-n);const a=n>0&&0===S.food;let o=e.miles;"Stormy"!==S.weather&&"Freezing"!==S.weather||(o=Math.round(.6*o)),S.oxen<1&&(o=0),S.mileage=Math.min(2e3,S.mileage+o);let r=1.5*(1-e.risk*t.risk);S.members.forEach(e=>{if(e.health<=0)return;let t=r+(2*Math.random()-1);a&&(t-=6+4*Math.random()),e.health=Math.max(0,Math.min(100,e.health+t))}),log(`Traveled ${o} miles. Weather: ${S.weather}.`),a&&log("You're out of food! The party is starving."),checkRiver()||(Math.random()<.13?triggerRandomEvent():checkLandmark()||checkGameEnd()||renderTravel())}function restParty(){if(S.over)return;sfxRest(),rollWeather(),advanceDate(1);const e=aliveMembers().length,t=Math.ceil(e*RATIONS[S.rations].lbs*.6);S.food=Math.max(0,S.food-t),S.members.forEach(e=>{e.health<=0||(e.health=Math.min(100,e.health+8+8*Math.random()))}),log("The party rested for a day to recover."),checkLandmark()||checkGameEnd()||renderTravel()}function checkLandmark(){const e=LANDMARKS.find(e=>e.mile<=S.mileage&&!S.landmarksPassed.includes(e.name));return!!e&&(S.landmarksPassed.push(e.name),sfxLandmark(),flashBanner("Arrived at "+e.name+"!"),log("Reached landmark: "+e.name+"."),!!e.town&&(showTown(e),!0))}function showTown(e){document.getElementById("townName").textContent=e.name.toUpperCase(),document.getElementById("townPokerBtn").style.display=e.poker?"block":"none",refreshStoreUI(),saveGame(),flashBanner("Progress saved at "+e.name+"."),show("screen-town")}function leaveTown(){show("screen-travel"),checkGameEnd()||renderTravel()}function checkRiver(){const e=RIVER_MILES.find(e=>e<=S.mileage&&!S.riversPassed.includes(e));return!!e&&(S.riversPassed.push(e),sfxAlert(),showEvent("RIVER CROSSING","A river blocks the trail ahead. How will you cross?",[{label:"FORD THE RIVER (free, risky)",fn:()=>resolveRiver("ford")},{label:"CAULK & FLOAT WAGON (free, moderate risk)",fn:()=>resolveRiver("float")},{label:"PAY FOR A FERRY ($8, safest)",fn:()=>resolveRiver("ferry")}]),!0)}function resolveRiver(e){if(sfxSplash(),"ferry"===e){if(!(S.money>=8))return void flashBanner("Not enough cash for the ferry!");S.money-=8,log("Paid for a ferry crossing. Safe and dry.")}else if("ford"===e)if(Math.random()<.35){const e=Math.min(S.food,20+Math.floor(30*Math.random()));S.food-=e,log(`The wagon tipped fording the river! Lost ${e} lbs of food.`),S.parts>0&&Math.random()<.5&&(S.parts--,log("A wagon part was damaged."))}else log("Forded the river without incident.");else if(Math.random()<.15){const e=Math.min(S.food,10+Math.floor(20*Math.random()));S.food-=e,log(`Minor mishap caulking the wagon. Lost ${e} lbs of food.`)}else log("Caulked the wagon and floated across safely.");checkLandmark()||checkGameEnd()||(show("screen-travel"),renderTravel())}function randomVictim(){const e=aliveMembers();return e.length?e[Math.floor(Math.random()*e.length)]:null}const TRAIL_EVENTS=[{title:"WAGON WHEEL BREAKS",weight:3,run:()=>{if(S.parts>0)return S.parts--,"A wheel splits crossing a rocky patch. You dig out a spare and get rolling again.";const e=Math.min(S.money,15);return S.money-=e,`A wheel splits crossing a rocky patch. With no spare on hand, a passing blacksmith fixes it for ${e}.`}},{title:"AXLE SNAPS",weight:2,run:()=>{if(S.parts>0)return S.parts--,"The axle cracks going over a rut. Good thing you packed a spare.";const e=Math.min(S.money,18);return S.money-=e,`The axle cracks going over a rut. Repairs cost ${e}.`}},{title:"MEASLES",weight:2,run:()=>{const e=randomVictim();if(!e)return"Word going around camp is measles is spreading. Your party seems fine, for now.";const t=6+10*Math.random();return e.health=Math.max(0,e.health-t),`${e.name} wakes up covered in spots. Measles has a hold on them.`}},{title:"BAD WATER",weight:2,run:()=>{const e=randomVictim();if(!e)return"A stagnant creek smells foul. You decide against drinking from it.";const t=5+8*Math.random();return e.health=Math.max(0,e.health-t),`${e.name} drinks from a bad creek and spends the night sick to their stomach.`}},{title:"SNAKE IN THE GRASS",weight:1,run:()=>{const e=randomVictim();if(!e||Math.random()<.5)return"A rattlesnake startles the oxen, but nobody's hurt.";const t=8+8*Math.random();return e.health=Math.max(0,e.health-t),`${e.name} gets a nasty snake bite while gathering firewood.`}},{title:"BUFFALO STAMPEDE",weight:2,run:()=>{if(Math.random()<.4&&S.oxen>0)return S.oxen--,"A stampede scatters your oxen — one wanders off for good.";const e=10+Math.floor(15*Math.random());return S.food+=e,`A buffalo herd thunders past. You salvage ${e} lbs of meat from a straggler.`}},{title:"BERRY BOUNTY",weight:2,run:()=>{const e=5+Math.floor(10*Math.random());return S.food+=e,`You stumble onto a patch of wild berries. Gained ${e} lbs of food.`}},{title:"TRAIL THIEVES",weight:2,run:()=>{const e=Math.min(S.food,Math.floor(12*Math.random()));return S.food-=e,0===e?"Someone prowls near camp overnight, but the dog scares them off before anything's taken.":`Thieves slip into camp overnight and make off with ${e} lbs of food.`}},{title:"FRIENDLY TRADER",weight:2,run:()=>{const e=3+Math.floor(8*Math.random());return S.food+=e,`A trader passing the other way swaps you ${e} lbs of food for news from back home.`}},{title:"LUCKY HORSESHOE",weight:1,run:()=>{const e=5+Math.floor(10*Math.random());return S.money+=e,`You spot a horseshoe by the trail and sell it at the next camp. Gained ${e}.`}},{title:"LOST BONNET",weight:1,run:()=>"A gust of wind sends someone's hat tumbling into the prairie. Mildly annoying. No real harm done."},{title:"CHATTY TRAVELER",weight:1,run:()=>"A talkative stranger shares trail gossip and a surprisingly good biscuit recipe. Spirits are lifted."}];function triggerRandomEvent(){const e=TRAIL_EVENTS.reduce((e,t)=>e+t.weight,0);let t=Math.random()*e,n=TRAIL_EVENTS[0];for(const e of TRAIL_EVENTS){if(t<e.weight){n=e;break}t-=e.weight}sfxAlert();const a=n.run();log(a),showEvent(n.title,a,[{label:"CONTINUE",fn:finishEventReturn}])}function finishEventReturn(){checkLandmark()||checkGameEnd()||(show("screen-travel"),renderTravel())}function checkGameEnd(){return 0===aliveMembers().length?(S.over=!0,S.won=!1,clearSave(),stopMusic(),currentTheme=null,sfxLose(),renderEnd(),show("screen-end"),!0):S.mileage>=2e3&&(S.over=!0,S.won=!0,clearSave(),stopMusic(),currentTheme=null,sfxWin(),renderEnd(),show("screen-end"),!0)}function renderEnd(){const e=document.getElementById("endBody");if(S.won){const t=Math.round((S.money+200*aliveMembers().length+S.food)*PROFESSIONS[S.profession].mult);e.innerHTML=`<h2 style="text-align:center;">YOU MADE IT!</h2>\n      <p>Your party reached the Willamette Valley on ${MONTHS[S.date.month]} ${S.date.day}, ${S.date.year}.</p>\n      <p>Survivors: ${aliveMembers().map(e=>e.name).join(", ")||"none"}</p>\n      <p>Final score: ${t}</p>`}else e.innerHTML=`<h2 style="text-align:center;">THE TRAIL HAS ENDED</h2>\n      <p>Your entire party perished along the trail, ${Math.round(S.mileage)} miles from Independence.</p>\n      <p>The journey claimed everyone before reaching Oregon.</p>`}function restartGame(){ensureTheme("title"),show("screen-title")}let hunt=null;const ANIMAL_SPRITES={rabbit:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAcCAYAAAAAwr0iAAABOUlEQVR4nN2Xuw3CMBCGfYg6TBAWCEsgegbIBDRR9qBDdAzAAPSIJcgCZAKywFFdZC72+eI8kPilFDZW/s/3sAMgIppfaihAliZ4OR4wSxPUzHPvxRDzMTQaQFnkhnabpQmWRT4PQFU3cDpf27EdcnveJ0BEBAAYAiHlmVTVTcdjkhooi7x9aCxBjhoBKe+UDjsSo0RAMrdrwBeJydqQzEOFOBkAr4HZATTmxhizjHmxpu20UneBxjSmC1QA3FyqeOk3fhipAGzzUE6livedhE4AzY77QqgApDz3gfABuVLgbMP749Y+Q6U+B2j33JTGmqs1Rv/zReST+i6gAtlt918LaBxbhPz9XOou6AshVT9JdQ5UdQMusND9HzIXAbj4V66UV74uBPDzLgDNP6PNetWZe77e0etsfQASs/jWKv19+QAAAABJRU5ErkJggg==",deer:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAsCAYAAAAwwXuTAAACIklEQVR4nO2ZsW6DMBCGj6ozS7ZKVrcoElPWSBmibBnyCnm2vkL3qkMfIBNLtwqpWxZegEw/Oowdn8EmJsq3lGAD/jjbZ1OiGXLYrJrDZtVIyl+ma9Z9SF6wULk1Ug+DSdLWTfXzr7EbF4pC5U1Z1Znp/K3rku+iREQQg0yh8uav+icionf11tbDMcqIZiIITtulMWKn7ZJO22XnHOr1Qp4yXE4X4nz8/LbHs4oguCWnl89G0DddQDJZwSH5j3dNkKRgofLm1oRiAnK6ZJKCwCZpq8v/guQEET0wRJITJU0MGT9lVWe6HId3PdcsyuuPFgy9GJbmN2k90drOdw0oecOmRvlExvYcXl5WddZpeKHy5uv7s3fRfnfsrQc5Q4RMDJG0gfa2gjY5sN8dO79DSXGkgqhrQu9t3tulGGL83lJJ1DUNH45Xmogpx58h6YKo65rkxGNwCjmOK5J4Ca4IdrpoWdXZfneMNomEQI+ubacPrAUI/T3leBQhxtsjiWLS32T4eBz6opMWJBrfg5yzqHRGmxppu6yCrtkpFUblQVycWhSlKYJIuJuQfs2Kjb6Qllwj7ob6imFKUem604SX4Fot6FxdemWxFt46a7Voj8/VRSTonSbwEC6qN2boftAGdvveN6WRedD24FCTUoiZfHSi5xthU3R90LtgCKKsZDBWfSIQ6x+dyX02DM1TcO48BefOwwt6pQlXbhqbu2Lf/yG5AhR9HbiVFh/HAAAAAElFTkSuQmCC",buffalo:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEwAAAA0CAYAAAAg5t6HAAAC30lEQVR4nO2avUokQRCAa0UQLthYFoZNLtvA0EfwLQwWg3sCowuNfIILDoN7hMsM5OINDcxMjoXD2EAQhDWqoWyre6q6q3p0rj/YrKd/vqmu/tkBaDQajUajwTMbs/FVN98NlbnbPlbv4+b6su/X8cn5m/b3a3cGQCYqLDuGuFAWQGVhnKhlt4iW/7v99+5Zb3E0ujj2PBunUFnLbtH/UnDlUtE5NFgNXHQBVBKGg5RIikGf5aShrBJpkmfdhVFZFnDSwoFuri93JeJi0QXgLMxaFhJKiw1QI01atloO8+b45HzGidNGWiq6ABz3YV7RRcFVNFw5Y5KoDDqlr35+78uszy6SK/EkhQHEpa3PLlRthHWPsnGtAUYTFUdlafZ/VNpkclgMFIeyNPs/hE7fyU5Jy37QdlyPGZ7SaskK2zPPYZqDtXV7OedMFCGVahJhMUnLbqHukARaJ03QsT5I6rr58xvWp98GyxYJk94+WEpL1cXJk7R59evHoCysP0tYKErSKTqYHHHa570iW53DwmsaKXT6SAefGzGeqITlygqfoSKGclBJex4kp+TR18Ne0MvzEwD4JO8UFvun6tsKD1ke9dUgejSi0fVZ4VJADqKdPgrziq6a5K7Q9DncFLPCvHPXGIRRplmd6QkimcNu7x9mtY86XoSnAuk0HbwPm0LuiiHNaakzaTTCbu8fRv2MoAY5h/U3qyQXXVhp6UrzUZBcC6VgtxX/Q3Tl0ouh0cUJq3GD6k1J7kLe5bBYdN1tH2erbr7zuAXwhoraP/jClsHt0xB7APKVkb6Bz5LTJLI0VLsPqw33QlPCXp6fRFMyO7mnrqXHgpOEElbdfGchrOhPEOwAnf+lN6taUqnB4+M7k3+N6JuLyUMs7re0/bDE/G82Luoo1ouFRSJXtedZOZ0SmENK3jxXX22qf4yS2geN8aW0lsl/jGJNE6akCVPShCkpSvraFc96bzR2+w0Br0wHtLhV82lUAAAAAElFTkSuQmCC"},animalImages={};function openHunt(){ensureTheme("hunt"),S.bullets<=0?flashBanner("You're out of ammunition!"):(hunt={timeLeft:30,aimAngle:0,outerRadius:Math.min(canvas.width,canvas.height)/2-20,animals:[],meat:0,spawnTimer:0,running:!0,lastTs:null},show("screen-hunt"),renderHuntHud(),requestAnimationFrame(huntLoop))}function renderHuntHud(){document.getElementById("huntHud").innerHTML=`\n    <div>Time: ${Math.ceil(hunt.timeLeft)}s</div>\n    <div>Ammo: ${S.bullets}</div>\n    <div>Meat gathered: ${hunt.meat} lbs</div>\n    <div>Rotate to face an animal, then tap SHOOT</div>\n  `}function spawnAnimal(){const e=[{type:"rabbit",img:"rabbit",w:22,h:19,radialSpeed:34,tolerance:13,meat:5},{type:"deer",img:"deer",w:38,h:30,radialSpeed:22,tolerance:18,meat:20},{type:"buffalo",img:"buffalo",w:52,h:36,radialSpeed:15,tolerance:24,meat:60}],t=e[Math.floor(Math.random()*e.length)];hunt.animals.push({...t,angle:360*Math.random(),angularDrift:16*Math.random()-8,radius:hunt.outerRadius,alive:!0})}Object.keys(ANIMAL_SPRITES).forEach(e=>{const t=new Image;t.src=ANIMAL_SPRITES[e],animalImages[e]=t});const canvas=document.getElementById("huntCanvas"),ctx=canvas.getContext("2d");function polarToXY(e,t,n,a){const o=(n-90)*Math.PI/180;return{x:e+a*Math.cos(o),y:t+a*Math.sin(o)}}function huntLoop(e){if(!hunt||!hunt.running)return;hunt.lastTs||(hunt.lastTs=e);const t=Math.min(.05,(e-hunt.lastTs)/1e3);hunt.lastTs=e,hunt.timeLeft-=t,hunt.spawnTimer-=t,hunt.spawnTimer<=0&&(spawnAnimal(),hunt.spawnTimer=.9+.9*Math.random()),hunt.animals.forEach(e=>{e.alive&&(e.radius-=e.radialSpeed*t,e.angle=(e.angle+e.angularDrift*t+360)%360)}),hunt.animals=hunt.animals.filter(e=>!(e.alive&&e.radius<8)&&e.radius>-20&&(e.alive||e.deadTimer>0)),hunt.animals.forEach(e=>{e.alive||(e.deadTimer-=t)}),drawHunt(),renderHuntHud(),hunt.timeLeft<=0||S.bullets<=0?endHunt():requestAnimationFrame(huntLoop)}function drawHunt(){const e=canvas.width,t=canvas.height,n=e/2,a=t/2;ctx.clearRect(0,0,e,t),ctx.fillStyle="#4a7c3f",ctx.fillRect(0,0,e,t),ctx.strokeStyle="rgba(43,29,14,0.3)",ctx.lineWidth=2,ctx.beginPath(),ctx.arc(n,a,hunt.outerRadius,0,2*Math.PI),ctx.stroke(),ctx.beginPath(),ctx.arc(n,a,.5*hunt.outerRadius,0,2*Math.PI),ctx.stroke(),ctx.fillStyle="rgba(201,67,58,0.16)",ctx.beginPath(),ctx.moveTo(n,a),ctx.arc(n,a,hunt.outerRadius,(hunt.aimAngle-18-90)*Math.PI/180,(hunt.aimAngle+18-90)*Math.PI/180),ctx.lineTo(n,a),ctx.fill(),ctx.strokeStyle="#c9433a",ctx.lineWidth=3;const o=polarToXY(n,a,hunt.aimAngle,hunt.outerRadius);ctx.beginPath(),ctx.moveTo(n,a),ctx.lineTo(o.x,o.y),ctx.stroke(),ctx.fillStyle="#2b1d0e",ctx.beginPath(),ctx.arc(n,a,8,0,2*Math.PI),ctx.fill(),hunt.animals.forEach(e=>{const t=polarToXY(n,a,e.angle,Math.max(e.radius,0)),o=animalImages[e.img];ctx.save(),ctx.translate(t.x,t.y),t.x>n&&ctx.scale(-1,1),o&&o.complete&&o.naturalWidth>0?(ctx.imageSmoothingEnabled=!1,ctx.drawImage(o,-e.w/2,-e.h/2,e.w,e.h)):(ctx.fillStyle="#8a7a5a",ctx.fillRect(-e.w/2,-e.h/2,e.w,e.h)),e.alive||(ctx.globalAlpha=.45,ctx.fillStyle="#c9433a",ctx.fillRect(-e.w/2,-e.h/2,e.w,e.h),ctx.globalAlpha=1),ctx.restore()})}function aimHunt(e){hunt&&(hunt.aimAngle=(hunt.aimAngle+e+360)%360)}function shootHunt(){if(!hunt||S.bullets<=0)return;S.bullets--,sfxShoot();let e=null;hunt.animals.forEach(t=>{if(!t.alive)return;let n=Math.abs(t.angle-hunt.aimAngle);n>180&&(n=360-n),n<=t.tolerance&&(e=t)}),e&&(e.alive=!1,e.deadTimer=.3,hunt.meat+=e.meat,sfxHit()),renderHuntHud()}let aimInterval=null;function bindHold(e,t){const n=e=>{e.preventDefault(),t(),aimInterval=setInterval(t,60)},a=()=>{clearInterval(aimInterval)};e.addEventListener("touchstart",n),e.addEventListener("mousedown",n),e.addEventListener("touchend",a),e.addEventListener("mouseup",a),e.addEventListener("mouseleave",a)}function endHunt(){if(!hunt)return;ensureTheme("trail"),hunt.running=!1;const e=Math.min(hunt.meat,100);S.food+=e,log(`Hunting trip yielded ${e} lbs of meat.`),hunt=null,show("screen-travel"),renderTravel()}document.addEventListener("DOMContentLoaded",()=>{bindHold(document.getElementById("aimLeft"),()=>aimHunt(-9)),bindHold(document.getElementById("aimRight"),()=>aimHunt(9)),document.getElementById("huntShoot").addEventListener("click",shootHunt)}),"serviceWorker"in navigator&&window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})});</script>
+</body>
+</html>
