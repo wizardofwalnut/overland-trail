@@ -1,4 +1,4 @@
-const CACHE_NAME = "overland-trail-v1";
+const CACHE_NAME = "overland-trail-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -29,9 +29,19 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  const isPage = url.pathname.endsWith("/") || url.pathname.endsWith("index.html") || url.pathname.endsWith("sw.js");
+  if (isPage) {
+    event.respondWith(
+      fetch(event.request).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return res;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).catch(() => cached);
-    })
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });
