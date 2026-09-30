@@ -221,7 +221,8 @@
   #screen-setup .scroll { overflow-y: auto; }
   #screen-travel { padding-top: 8px; }
   #banner { top: 54px; z-index: 60; }
-  #screen-travel #log { flex: 0 0 38px; height: 38px; overflow-y: auto; }
+  #screen-travel #log { flex: 1 1 38px; min-height: 38px; height: auto; overflow-y: auto; }
+#screen-travel #scene { flex: 0 1 240px; min-height: 120px; }
 
   .miles-left {
     position:static;
@@ -375,7 +376,7 @@
   #scene.has-plate .sun,
   #scene.has-plate .cloud,
   #scene.has-plate .ground-strip { display: none; }
-  #scene .wagon { z-index: 3; }
+  #scene .wagon { z-index: 3; height: 43%; width: auto; max-width: 60%; }
   #scene.has-plate {
     background-size: cover;
     background-position: center bottom;
@@ -688,18 +689,16 @@ button:disabled { opacity: .45; filter: grayscale(.7); cursor: not-allowed; }
       </div>
       <div class="row">
         <button onclick="openMap()">TRAIL MAP</button>
-      </div>
-      <div class="row">
-        <button onclick="openCompendium()">TRAIL ALMANAC</button>
+        <button onclick="openCompendium()">ALMANAC</button>
       </div>
       <div class="row">
         <button onclick="restParty()">REST A DAY</button>
+        <button onclick="openSupplies()">SUPPLIES</button>
       </div>
       <div class="row">
         <button onclick="openPaceMenu()">PACE: <span id="paceLbl"></span></button>
         <button onclick="openRationsMenu()">RATIONS: <span id="rationLbl"></span></button>
       </div>
-      <button onclick="openSupplies()">CHECK SUPPLIES &amp; PARTY</button>
     </div>
   </div>
 
