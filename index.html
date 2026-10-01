@@ -455,7 +455,7 @@ button:disabled { opacity: .45; filter: grayscale(.7); cursor: not-allowed; }
 
 #scene { position: relative; overflow: hidden; }
   .plant-spot {
-    position: absolute; width: 34px; height: 34px; cursor: pointer;
+    position: absolute; height: 17%; min-height: 30px; max-height: 46px; width: auto; cursor: pointer;
     image-rendering: pixelated; z-index: 5;
     transform-origin: 50% 100%;
     filter: drop-shadow(0 0 3px rgba(255,255,200,0.9));
@@ -1090,8 +1090,10 @@ function renderPlantSpot(){
     sc.appendChild(spot);
   }
   spot.src=S.activePlant.art;
-  spot.style.left=S.activePlant.px+"%";
-  spot.style.top=S.activePlant.py+"%";
+  const g=plantGroundSpot(S.activePlant);
+  spot.style.left=g.px+"%";
+  spot.style.top="auto";
+  spot.style.bottom=g.gy+"%";
   spot.title="A "+S.activePlant.name+" — tap to pick";
 }
 function partyConditionHTML(){
@@ -1419,13 +1421,14 @@ function eligiblePlants(){
   return Object.entries(PLANT_SPECIES).filter(([id,sp])=>!sp.route||S.routeSegments.includes(sp.route));
 }
 function pickPlantSpot(){
-  const WAGON_X_MIN=28,WAGON_X_MAX=74,WAGON_Y_MIN=44,WAGON_Y_MAX=100;
-  for(let i=0;i<12;i++){
-    const px=12+Math.random()*70,py=18+Math.random()*55;
-    const overlapsWagon=px<WAGON_X_MAX&&px+7>WAGON_X_MIN&&py>WAGON_Y_MIN&&py<WAGON_Y_MAX;
-    if(!overlapsWagon)return{px:px,py:py};
-  }
-  return{px:82+Math.random()*4,py:18+Math.random()*12};
+  // Plants grow out of the ground strip, left of the oxen (the wagon starts at 30% across).
+  return{px:3+Math.random()*13,gy:4+Math.random()*12};
+}
+function plantGroundSpot(pl){
+  // Older saves stored a top-based spot; move those onto the ground too.
+  const px=pl.px>16?3+(pl.px%13):pl.px;
+  const gy=pl.gy!=null?pl.gy:4+((pl.py||0)%12);
+  return{px:px,gy:gy};
 }
 function rollPlantSpawn(){
   S.activePlant=null;
@@ -1437,7 +1440,7 @@ function rollPlantSpawn(){
   for(const entry of pool){if(r<entry[1].w){chosen=entry;break;}r-=entry[1].w;}
   const[id,sp]=chosen;
   const spot=pickPlantSpot();
-  S.activePlant={id:id,name:sp.name,art:sp.art,rarity:sp.rarity,px:spot.px,py:spot.py};
+  S.activePlant={id:id,name:sp.name,art:sp.art,rarity:sp.rarity,px:spot.px,gy:spot.gy};
 }
 function showPickupToast(px,py,text,isNew){
   const sc=document.getElementById("scene");
@@ -1459,12 +1462,12 @@ function collectPlant(){
   const rarityTag=plant.rarity&&plant.rarity!=="common"?" ("+plant.rarity.toUpperCase()+")":"";
   if(isNew){
     if(typeof sfxWin==="function")sfxWin();
-    showPickupToast(plant.px,plant.py,"NEW! "+plant.name+rarityTag,true);
+    showPickupToast(Math.max(22,plantGroundSpot(plant).px+4),60,"NEW! "+plant.name+rarityTag,true);
     flashBanner("NEW ALMANAC ENTRY: "+plant.name+"!");
     log("Picked a "+plant.name+" — a new entry for your Trail Almanac!");
   }else{
     if(typeof sfxClick==="function")sfxClick();
-    showPickupToast(plant.px,plant.py,"+1 "+plant.name+rarityTag,false);
+    showPickupToast(Math.max(22,plantGroundSpot(plant).px+4),60,"+1 "+plant.name+rarityTag,false);
     log("Picked another "+plant.name+".");
   }
   S.activePlant=null;
