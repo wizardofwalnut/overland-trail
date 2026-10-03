@@ -2128,11 +2128,12 @@ const MAP_STOPS=[
   {mile:770,x:0.60,y:0.624},
   {mile:870,x:0.58,y:0.583},
   {mile:1030,x:0.52,y:0.518},
-  {mile:1280,x:0.45,y:0.415},
-  {mile:1420,x:0.50,y:0.358},
-  {mile:1550,x:0.55,y:0.304},
-  {mile:1830,x:0.60,y:0.190},
-  {mile:2000,x:0.63,y:0.120}
+  /* Everything after Fort Bridger stays on the land, below the THE TRAIL banner, and the trail ends in the Willamette farm fields at the top of the map. Spacing follows the miles between stops. */
+  {mile:1280,x:0.45,y:0.454},
+  {mile:1420,x:0.48,y:0.418},
+  {mile:1550,x:0.52,y:0.385},
+  {mile:1830,x:0.55,y:0.313},
+  {mile:2000,x:0.50,y:0.270}
 ];
 const FORK_BRANCHES={
   timber_ridge:[{mile:260,dx:-0.06},{mile:345,dx:-0.03}],
@@ -2188,6 +2189,7 @@ function drawTrailMap(){
   ctx.strokeStyle="#3a1c0c";ctx.lineWidth=8;ctx.stroke();
   ctx.strokeStyle="#ff9c1a";ctx.lineWidth=4.5;ctx.stroke();
   ctx.font="7px monospace";ctx.textAlign="center";
+  const shownLabels=[];
   MAP_LABELS.forEach(lb=>{
     const p=mapPoint(lb.mile,MAP_STOPS);
     if(!lb.alwaysShow&&activeMapLabelMile!==lb.mile){
@@ -2200,17 +2202,23 @@ function drawTrailMap(){
     const ly=(Math.abs(p.y-you.y)<16&&Math.abs(p.x-you.x)<50)?p.y+(you.y<150?44:24):p.y;
     ctx.fillStyle="#f0e0b8";
     ctx.fillRect(p.x-tw/2,ly-5,tw,10);
+    shownLabels.push({x1:p.x-tw/2,x2:p.x+tw/2,y1:ly-5,y2:ly+5});
     ctx.strokeStyle="#5a4326";ctx.lineWidth=1;
     ctx.strokeRect(p.x-tw/2,ly-5,tw,10);
     ctx.fillStyle="#2b1d0e";
     ctx.fillText(lb.text,p.x,ly+2.5);
   });
-  const labelY=you.y<150?you.y+46:Math.max(you.y,45);
+  /* YOU ARE HERE box: try above the marker, then below, right and left, and use the first spot that doesn't cover a place name or run off the map. */
+  const boxHits=(cx,top)=>cx-36<4||cx+36>w-4||top<4||top+14>h-4||shownLabels.some(r=>cx+36>r.x1&&cx-36<r.x2&&top+14>r.y1&&top<r.y2);
+  const defTop=(you.y<150?you.y+46:Math.max(you.y,45))-28;
+  const spots=[[you.x,defTop],[you.x,you.y+18],[you.x+48,you.y-7],[you.x-48,you.y-7]];
+  const spot=spots.find(([cx,top])=>!boxHits(cx,top))||spots[0];
+  const bx=spot[0],btop=spot[1];
   ctx.fillStyle="#7a2b1e";
-  ctx.fillRect(you.x-36,labelY-28,72,14);
-  ctx.strokeStyle="#2b1d0e";ctx.lineWidth=2;ctx.strokeRect(you.x-36,labelY-28,72,14);
+  ctx.fillRect(bx-36,btop,72,14);
+  ctx.strokeStyle="#2b1d0e";ctx.lineWidth=2;ctx.strokeRect(bx-36,btop,72,14);
   ctx.fillStyle="#f4e4bc";ctx.font="8px monospace";ctx.textAlign="center";
-  ctx.fillText("YOU ARE HERE",you.x,labelY-18);
+  ctx.fillText("YOU ARE HERE",bx,btop+10);
   ctx.fillStyle="#c9433a";
   ctx.beginPath();
   ctx.moveTo(you.x-9,you.y+2);ctx.lineTo(you.x+9,you.y+2);ctx.lineTo(you.x+9,you.y+10);
