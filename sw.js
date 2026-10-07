@@ -1,4 +1,4 @@
-const CACHE_NAME = "overland-trail-v2";
+const CACHE_NAME = "overland-trail-v3";
 const ASSETS = [
   "./",
   "./index.html",
