@@ -2,6 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* App-only lock: the game runs inside the Google Play app, not in a normal browser.
+   The Play app (Trusted Web Activity) opens the page with referrer android-app://com.theoverlandtrail.www */
+(function(){
+  var KEY="ot_app_ok", PKG="android-app://com.theoverlandtrail.www", ok=false;
+  try{ if((document.referrer||"").indexOf(PKG)===0) ok=true; }catch(e){}
+  if(/[?&]dev=wagonmaster(&|$)/.test(location.search)) ok=true;
+  var h=location.hostname; if(location.protocol==="file:"||h==="localhost"||h==="127.0.0.1") ok=true;
+  try{ if(ok) localStorage.setItem(KEY,"1"); else if(localStorage.getItem(KEY)==="1") ok=true; }catch(e){}
+  if(!ok) document.documentElement.className+=" ot-locked";
+  window.OT_LOCKED=!ok;
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>The Overland Trail</title>
 <meta name="description" content="A retro-style wagon trail survival game. Manage supplies, cross rivers, hunt for food, and lead your party west.">
@@ -12,6 +25,16 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  #otGate{display:none}
+  html.ot-locked #bezel{display:none}
+  html.ot-locked #otGate{display:flex;position:fixed;inset:0;z-index:9999;background:#1b1b14;align-items:center;justify-content:center;padding:16px}
+  #otGate .card{max-width:420px;width:100%;background:#e9dcb5;border:6px solid #2b1d0e;padding:28px 18px;text-align:center;color:#2b1d0e;font-family:'Press Start 2P',monospace}
+  #otGate img{width:96px;height:96px;image-rendering:pixelated;margin-bottom:18px}
+  #otGate h1{font-size:16px;line-height:1.6;margin:0 0 14px}
+  #otGate p{font-size:9px;line-height:1.9;margin:0 0 14px}
+  #otGate a{display:inline-block;margin-top:8px;background:#2b1d0e;color:#f3e2a9;text-decoration:none;font-size:10px;line-height:1.6;padding:14px 16px;border:3px solid #7a5a2a}
+</style>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
   html, body {
@@ -531,6 +554,13 @@ button:disabled { opacity: .45; filter: grayscale(.7); cursor: not-allowed; }
 </style>
 </head>
 <body>
+<div id="otGate"><div class="card">
+  <img src="icon-192.png" alt="">
+  <h1>THE OVERLAND TRAIL</h1>
+  <p>1863. Independence to the Willamette Valley.</p>
+  <p>Lead your party west on the Overland Stage route. Play the full game on your Android phone.</p>
+  <a href="https://play.google.com/store/apps/details?id=com.theoverlandtrail.www">GET IT ON GOOGLE PLAY</a>
+</div></div>
 <div id="bezel"><div id="game">
   <div class="banner" id="banner"></div>
   <button id="audioToggle" onclick="toggleAudio()" style="position:absolute; top:8px; right:8px; width:34px; height:34px; padding:0; margin:0; font-size:14px; z-index:50; line-height:1;">&#9834;</button>
